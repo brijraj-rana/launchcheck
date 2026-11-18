@@ -21,6 +21,7 @@ struct ChangesTab: View {
                     if !comparison.changes.isEmpty { pages(comparison.changes) }
                     if !comparison.pagesAdded.isEmpty { addresses("Pages added", comparison.pagesAdded, linked: true) }
                     if !comparison.pagesRemoved.isEmpty { addresses("Pages no longer found", comparison.pagesRemoved, linked: false) }
+                    Kept(model: model, report: report)
                 }
                 .padding(.horizontal, 28)
                 .padding(.top, 30)
@@ -38,6 +39,7 @@ struct ChangesTab: View {
                     .foregroundStyle(.secondary)
                     .lineSpacing(3)
                     .frame(maxWidth: 480, alignment: .leading)
+                Kept(model: model, report: report).frame(maxWidth: 480).padding(.top, 20)
             }
             .padding(.horizontal, 28)
             .padding(.top, 44)
@@ -157,6 +159,74 @@ struct ChangesTab: View {
             if list.count > 40 {
                 Text("And \(list.count - 40) more.").font(.system(size: 11.5)).foregroundStyle(.secondary)
             }
+        }
+    }
+}
+
+/// The checks kept for this site: open an older one, or delete what is no longer wanted.
+struct Kept: View {
+    @ObservedObject var model: AuditModel
+    let report: Report
+
+    var body: some View {
+        if !model.checks.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                SectionLabel(text: "Kept checks", count: model.checks.count)
+                VStack(spacing: 0) {
+                    ForEach(Array(model.checks.enumerated()), id: \.offset) { index, check in
+                        if index > 0 { Tone.hairline.frame(height: 1) }
+                        KeptRow(check: check, shown: abs(check.date.timeIntervalSince(report.date)) < 1) {
+                            model.present(check, comparedWith: model.checks.first { $0.date < check.date }, keepingTab: true)
+                        } delete: {
+                            model.delete(check)
+                        }
+                    }
+                }
+                Text("The last 12 checks of a site are kept on this Mac.")
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 4)
+            }
+        }
+    }
+}
+
+private struct KeptRow: View {
+    let check: Report
+    let shown: Bool
+    let open: () -> Void
+    let delete: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Button(action: open) {
+                HStack(spacing: 10) {
+                    ScoreRing(score: check.score, blocked: check.count(.error) > 0, size: 14, line: 2.2)
+                    Text(check.date.formatted(.dateTime.day().month(.abbreviated).hour().minute()))
+                        .font(.system(size: 13, weight: shown ? .semibold : .regular).monospacedDigit())
+                    if shown { Text("on screen").font(.system(size: 11.5)).foregroundStyle(.secondary) }
+                    Spacer(minLength: 10)
+                    Text("\(check.pagesChecked) pages").font(.system(size: 11.5).monospacedDigit()).foregroundStyle(.secondary)
+                    Text("\(check.score)").font(.system(size: 12.5, weight: .medium).monospacedDigit()).frame(width: 28, alignment: .trailing)
+                }
+                .frame(height: 34)
+            }
+            .buttonStyle(RowStyle(inset: 0))
+            .disabled(shown)
+            .help(shown ? "" : "Open this check")
+            Button(action: delete) {
+                Image(systemName: "trash").font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary)
+                    .frame(width: 24, height: 24).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .opacity(hovering ? 1 : 0.35)
+            .help("Delete this check")
+            .accessibilityLabel("Delete the check from \(check.date.formatted(.dateTime.day().month(.abbreviated)))")
+        }
+        .onHover { hovering = $0 }
+        .contextMenu {
+            Button("Delete This Check", role: .destructive, action: delete)
         }
     }
 }

@@ -25,6 +25,20 @@ struct ContentView: View {
         }
         .background(Tone.sidebar)
         .onAppear { if !isSnapshot { ArrowKeys.install(for: model) } }
+        .confirmationDialog(removalTitle, isPresented: Binding(get: { model.removal != nil }, set: { if !$0 { model.removal = nil } }), titleVisibility: .visible) {
+            Button(model.removal == .everything ? "Delete All" : "Delete", role: .destructive) { model.confirmRemoval() }
+            Button("Cancel", role: .cancel) { model.removal = nil }
+        } message: {
+            Text("The kept checks are removed from this Mac. The site itself is not touched.")
+        }
+    }
+
+    private var removalTitle: String {
+        switch model.removal {
+        case .site(let host): return "Delete \(host) and its kept checks?"
+        case .everything: return "Delete all \(model.sites.count) sites and their kept checks?"
+        case nil: return ""
+        }
     }
 
     @ViewBuilder private var main: some View {
@@ -90,13 +104,31 @@ struct RunLine: View {
 
 struct Sidebar: View {
     @ObservedObject var model: AuditModel
+    @Environment(\.isSnapshot) private var isSnapshot
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            SectionLabel(text: "Sites")
-                .padding(.horizontal, 18)
-                .padding(.top, 54)
-                .padding(.bottom, 6)
+            HStack {
+                SectionLabel(text: "Sites")
+                Spacer()
+                if !model.sites.isEmpty, !isSnapshot {
+                    Menu {
+                        Button("Delete All Sites…", role: .destructive) { model.removal = .everything }
+                    } label: {
+                        Image(systemName: "ellipsis").font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
+                            .frame(width: 20, height: 16).contentShape(Rectangle())
+                    }
+                    .menuStyle(.borderlessButton)
+                    .menuIndicator(.hidden)
+                    .fixedSize()
+                    .help("More")
+                    .accessibilityLabel("More")
+                }
+            }
+            .padding(.leading, 18)
+            .padding(.trailing, 12)
+            .padding(.top, 54)
+            .padding(.bottom, 6)
             if model.sites.isEmpty {
                 Text("Sites you check are kept here with their last score.")
                     .font(.system(size: 12))
@@ -111,6 +143,8 @@ struct Sidebar: View {
                         ForEach(model.sites, id: \.host) { site in
                             SiteRow(site: site, selected: model.report?.host == site.host && !model.isRunning) {
                                 model.show(site)
+                            } delete: {
+                                model.removal = .site(site.host)
                             }
                             .contextMenu {
                                 Button("Check Again") {
@@ -120,7 +154,8 @@ struct Sidebar: View {
                                 Button("Open in Browser") { model.open(site.site) }
                                 Button("Copy Address") { model.copy(site.site) }
                                 Divider()
-                                Button("Forget This Site") { model.forget(site.host) }
+                                Button("Delete Latest Check") { model.delete(site) }
+                                Button("Delete Site…", role: .destructive) { model.removal = .site(site.host) }
                             }
                         }
                     }
@@ -137,9 +172,33 @@ struct SiteRow: View {
     let site: Report
     let selected: Bool
     let action: () -> Void
+    let delete: () -> Void
+    @State private var hovering = false
 
     var body: some View {
         let blocked = site.count(.error) > 0
+        row(blocked: blocked)
+            .overlay(alignment: .trailing) {
+                // Under the pointer the score gives way to a way out.
+                if hovering {
+                    Button(action: delete) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 22, height: 22)
+                            .background(Circle().fill(Tone.lift))
+                            .contentShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.trailing, 6)
+                    .help("Delete this site")
+                    .accessibilityLabel("Delete \(site.host)")
+                }
+            }
+            .onHover { hovering = $0 }
+    }
+
+    private func row(blocked: Bool) -> some View {
         Button(action: action) {
             HStack(spacing: 9) {
                 ScoreRing(score: site.score, blocked: blocked, size: 16, line: 2.5)
@@ -155,6 +214,7 @@ struct SiteRow: View {
                 Text("\(site.score)")
                     .font(.system(size: 12, weight: .medium).monospacedDigit())
                     .foregroundStyle(blocked ? AnyShapeStyle(Tone.error) : AnyShapeStyle(.secondary))
+                    .opacity(hovering ? 0 : 1)
             }
             .frame(height: 40)
         }

@@ -178,4 +178,27 @@ public final class History: @unchecked Sendable {
     public func forget(_ host: String) {
         try? fm.removeItem(at: folder(for: host))
     }
+
+    /// Removes one kept report, and the site's folder with it when that was the last one.
+    public func remove(_ report: Report) {
+        let folder = folder(for: report.host)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let files = ((try? fm.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? []).filter { $0.pathExtension == "json" }
+        var left = files.count
+        for file in files {
+            guard let kept = try? decoder.decode(Report.self, from: Data(contentsOf: file)),
+                  abs(kept.date.timeIntervalSince(report.date)) < 1 else { continue }
+            try? fm.removeItem(at: file)
+            left -= 1
+        }
+        if left <= 0 { try? fm.removeItem(at: folder) }
+    }
+
+    /// Removes every kept report of every site.
+    public func forgetAll() {
+        for folder in (try? fm.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)) ?? [] {
+            try? fm.removeItem(at: folder)
+        }
+    }
 }

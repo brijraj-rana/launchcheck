@@ -27,6 +27,7 @@ enum Snapshot {
                 }
                 model.selectedIssue = "page.noindex"
                 model.trail = [58, 61, 60, 66, 69, 77]
+                model.checks = [after, before]
                 model.selectedPage = "https://www.acme-rockets.com/pricing"
 
                 let window = ContentView(model: model)

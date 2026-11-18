@@ -73,6 +73,13 @@ struct LaunchcheckApp: App {
                     .disabled(model.report == nil)
                 Button("Save as JSON…") { model.save(json: true) }
                     .disabled(model.report == nil)
+                Divider()
+                Button("Delete This Check") { if let report = model.report { model.delete(report) } }
+                    .disabled(model.report == nil || model.isRunning)
+                Button("Delete Site…") { if let host = model.report?.host { model.removal = .site(host) } }
+                    .disabled(model.report == nil || model.isRunning)
+                Button("Delete All Sites…") { model.removal = .everything }
+                    .disabled(model.sites.isEmpty || model.isRunning)
             }
         }
     }

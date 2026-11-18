@@ -96,7 +96,7 @@ cd launchcheck
 
 ## Using it
 
-Type a site and press Return. Sites you have checked stay in the sidebar with their last score; click one to reopen its report without checking again. The slider icon in the address bar sets how many pages to read (50, 200 or 1,000), whether links to other sites are followed, and whether images are weighed.
+Type a site and press Return. Sites you have checked stay in the sidebar with their last score; click one to reopen its report without checking again. Point at a site and press the × to delete it, or use the menu beside “Sites” to delete them all. The Changes tab lists the checks kept for a site: open an older one, or delete any of them. The slider icon in the address bar sets how many pages to read (50, 200 or 1,000), whether links to other sites are followed, and whether images are weighed.
 
 | Shortcut | Does |
 |---|---|

@@ -574,4 +574,22 @@ final class LaunchcheckCoreTests: XCTestCase {
         XCTAssertEqual(decoded, report)
         XCTAssertEqual(Set(Check.all.map(\.id)).count, Check.all.count, "check IDs must be unique")
     }
+
+    func testHistoryRemovesOneCheckThenTheSite() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("launchcheck-test-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let history = History(directory: directory)
+        let old = Report(site: "https://example.com/", date: Date(timeIntervalSince1970: 1_700_000_000), pagesChecked: 1, pagesFound: 1, linksChecked: 0, seconds: 1, findings: [], passed: [])
+        let new = Report(site: "https://example.com/", date: Date(timeIntervalSince1970: 1_700_090_000), pagesChecked: 2, pagesFound: 2, linksChecked: 0, seconds: 1, findings: [], passed: [])
+        let other = Report(site: "https://other.test/", date: Date(timeIntervalSince1970: 1_700_000_500), pagesChecked: 1, pagesFound: 1, linksChecked: 0, seconds: 1, findings: [], passed: [])
+        [old, new, other].forEach(history.save)
+
+        history.remove(new)
+        XCTAssertEqual(history.reports(for: "example.com").map(\.pagesChecked), [1])
+        history.remove(old)
+        XCTAssertEqual(history.sites().map(\.host), ["other.test"])
+
+        history.forgetAll()
+        XCTAssertTrue(history.sites().isEmpty)
+    }
 }

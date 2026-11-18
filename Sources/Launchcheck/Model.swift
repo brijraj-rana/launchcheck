@@ -43,6 +43,22 @@ final class AuditModel: ObservableObject {
     @Published var trail: [Int] = []
     /// Briefly true after something was copied, so the button can say so.
     @Published var copied = false
+    /// The checks kept for the site on screen, newest first.
+    @Published var checks: [Report] = []
+    /// A deletion waiting for the user to confirm it.
+    @Published var removal: Removal?
+
+    enum Removal: Identifiable, Equatable {
+        case site(String)
+        case everything
+
+        var id: String {
+            switch self {
+            case .site(let host): return host
+            case .everything: return "*"
+            }
+        }
+    }
 
     @Published var maxPages: Int {
         didSet { UserDefaults.standard.set(maxPages, forKey: "maxPages") }
@@ -137,9 +153,12 @@ final class AuditModel: ObservableObject {
         present(report, comparedWith: earlier)
     }
 
-    func present(_ report: Report, comparedWith previous: Report?) {
+    func present(_ report: Report, comparedWith previous: Report?, keepingTab: Bool = false) {
+        let tabBefore = tab
+        defer { if keepingTab { tab = tabBefore } }
         self.report = report
         comparison = previous.map { Drift.compare($0, report) }
+        checks = history.reports(for: report.host)
         trail = Array(history.reports(for: report.host).filter { $0.date <= report.date }.sorted { $0.date < $1.date }.map(\.score).suffix(12))
         if trail.isEmpty { trail = (previous.map { [$0.score] } ?? []) + [report.score] }
         tab = .overview
@@ -153,14 +172,54 @@ final class AuditModel: ObservableObject {
         phase = .done
     }
 
+    // MARK: Deleting
+
+    /// Deletes every kept check of one site.
     func forget(_ host: String) {
         history.forget(host)
         sites = history.sites()
-        if report?.host == host, !isRunning {
-            report = nil
-            comparison = nil
-            phase = .idle
+        if report?.host == host, !isRunning { clear() }
+    }
+
+    func forgetEverything() {
+        history.forgetAll()
+        sites = []
+        if !isRunning { clear() }
+    }
+
+    /// Deletes one kept check. If it was the one on screen, the check before it takes its place.
+    func delete(_ check: Report) {
+        history.remove(check)
+        sites = history.sites()
+        guard let shown = report, shown.host == check.host, !isRunning else { return }
+        let left = history.reports(for: check.host)
+        if abs(shown.date.timeIntervalSince(check.date)) < 1 {
+            if let next = left.first {
+                present(next, comparedWith: left.dropFirst().first, keepingTab: true)
+            } else {
+                clear()
+            }
+        } else {
+            present(shown, comparedWith: left.first { $0.date < shown.date }, keepingTab: true)
         }
+    }
+
+    func confirmRemoval() {
+        switch removal {
+        case .site(let host): forget(host)
+        case .everything: forgetEverything()
+        case nil: break
+        }
+        removal = nil
+    }
+
+    private func clear() {
+        report = nil
+        comparison = nil
+        checks = []
+        trail = []
+        address = ""
+        phase = .idle
     }
 
     func reveal(_ check: Check) {
