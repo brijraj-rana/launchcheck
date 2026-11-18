@@ -1,0 +1,220 @@
+import AppKit
+import LaunchcheckCore
+import SwiftUI
+import UniformTypeIdentifiers
+
+@MainActor
+final class AuditModel: ObservableObject {
+    enum Phase: Equatable {
+        case idle
+        case running
+        case done
+        case failed(String)
+    }
+
+    enum Tab: String, CaseIterable {
+        case overview = "Overview"
+        case issues = "Issues"
+        case pages = "Pages"
+        case changes = "Changes"
+    }
+
+    @Published var address = ""
+    @Published var phase: Phase = .idle
+    @Published var progress = AuditProgress(phase: "Starting")
+    /// Steps of the current run that have finished, in order.
+    @Published var finishedSteps: [String] = []
+    @Published var report: Report?
+    @Published var comparison: Comparison?
+    @Published var sites: [Report] = []
+
+    @Published var tab: Tab = .overview
+    @Published var category: LaunchcheckCore.Category?
+    @Published var search = ""
+    @Published var pageSearch = ""
+    @Published var selectedPage: String?
+    @Published var expanded: Set<String> = []
+
+    @Published var maxPages: Int {
+        didSet { UserDefaults.standard.set(maxPages, forKey: "maxPages") }
+    }
+    @Published var checkExternalLinks: Bool {
+        didSet { UserDefaults.standard.set(checkExternalLinks, forKey: "checkExternalLinks") }
+    }
+    @Published var checkImages: Bool {
+        didSet { UserDefaults.standard.set(checkImages, forKey: "checkImages") }
+    }
+
+    let history: History
+    private var task: Task<Void, Never>?
+    private var run = 0
+
+    init(history: History = History(), loadSites: Bool = true) {
+        self.history = history
+        let defaults = UserDefaults.standard
+        maxPages = defaults.object(forKey: "maxPages") as? Int ?? 200
+        checkExternalLinks = defaults.object(forKey: "checkExternalLinks") as? Bool ?? true
+        checkImages = defaults.object(forKey: "checkImages") as? Bool ?? true
+        if loadSites { sites = history.sites() }
+    }
+
+    var isRunning: Bool { phase == .running }
+
+    // MARK: Running a check
+
+    func start() {
+        let site = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !site.isEmpty else { return }
+        task?.cancel()
+        run += 1
+        let current = run
+        var options = Options()
+        options.maxPages = maxPages
+        options.checkExternalLinks = checkExternalLinks
+        options.checkImages = checkImages
+        progress = AuditProgress(phase: "Starting")
+        finishedSteps = []
+        phase = .running
+
+        let update: @Sendable (AuditProgress) -> Void = { [weak self] progress in
+            Task { @MainActor in
+                // A late update from a run that was stopped or replaced must not repaint the screen.
+                guard let self, self.run == current, self.isRunning else { return }
+                if progress.phase != self.progress.phase, self.progress.phase != "Starting" {
+                    self.finishedSteps.append(Self.past(self.progress))
+                }
+                // Updates arrive from several requests at once; never let the bar run backwards.
+                if progress.phase != self.progress.phase || progress.done >= self.progress.done { self.progress = progress }
+            }
+        }
+        task = Task { [weak self] in
+            do {
+                let report = try await Auditor(options: options).run(site, progress: update)
+                guard let self, self.run == current, !Task.isCancelled else { return }
+                self.finish(report)
+            } catch is CancellationError {
+                return
+            } catch {
+                guard let self, self.run == current else { return }
+                self.phase = .failed(error.localizedDescription)
+            }
+        }
+    }
+
+    private static func past(_ step: AuditProgress) -> String {
+        step.total > 0 ? "\(step.phase) (\(step.total))" : step.phase
+    }
+
+    private func finish(_ report: Report) {
+        let previous = history.latest(for: report.host)
+        history.save(report)
+        sites = history.sites()
+        present(report, comparedWith: previous)
+    }
+
+    func stop() {
+        task?.cancel()
+        run += 1
+        phase = report == nil ? .idle : .done
+    }
+
+    // MARK: Showing a report
+
+    /// Opens an earlier report from the sidebar, compared with the one before it.
+    func show(_ report: Report) {
+        guard !isRunning else { return }
+        let earlier = history.reports(for: report.host).first { $0.date < report.date }
+        address = report.host
+        present(report, comparedWith: earlier)
+    }
+
+    func present(_ report: Report, comparedWith previous: Report?) {
+        self.report = report
+        comparison = previous.map { Drift.compare($0, report) }
+        tab = .overview
+        category = nil
+        search = ""
+        pageSearch = ""
+        // What must be fixed is open from the start; the rest waits to be asked.
+        expanded = Set(report.groups.filter { $0.check.severity == .error }.map(\.id))
+        selectedPage = sortedPages(of: report).first?.url
+        phase = .done
+    }
+
+    func forget(_ host: String) {
+        history.forget(host)
+        sites = history.sites()
+        if report?.host == host, !isRunning {
+            report = nil
+            comparison = nil
+            phase = .idle
+        }
+    }
+
+    func reveal(_ check: Check) {
+        category = nil
+        search = ""
+        expanded.insert(check.id)
+        tab = .issues
+    }
+
+    func filter(by category: LaunchcheckCore.Category) {
+        self.category = category
+        search = ""
+        tab = .issues
+    }
+
+    var visibleGroups: [Report.Group] {
+        guard let report else { return [] }
+        let needle = search.trimmingCharacters(in: .whitespaces).lowercased()
+        return report.groups.filter { group in
+            if let category, group.check.category != category { return false }
+            guard !needle.isEmpty else { return true }
+            return group.check.title.lowercased().contains(needle)
+                || group.findings.contains { ($0.url ?? "").lowercased().contains(needle) || ($0.detail ?? "").lowercased().contains(needle) }
+        }
+    }
+
+    /// Pages with the most to fix first.
+    func sortedPages(of report: Report) -> [PageSummary] {
+        let counts = Dictionary(report.findings.compactMap(\.url).map { ($0, 1) }, uniquingKeysWith: +)
+        return report.pages.enumerated().sorted { a, b in
+            let x = counts[a.element.url] ?? 0, y = counts[b.element.url] ?? 0
+            return x != y ? x > y : a.offset < b.offset
+        }.map(\.element)
+    }
+
+    var visiblePages: [PageSummary] {
+        guard let report else { return [] }
+        let needle = pageSearch.trimmingCharacters(in: .whitespaces).lowercased()
+        let pages = sortedPages(of: report)
+        guard !needle.isEmpty else { return pages }
+        return pages.filter { $0.url.lowercased().contains(needle) || ($0.title ?? "").lowercased().contains(needle) }
+    }
+
+    // MARK: Getting it out
+
+    func copyMarkdown() {
+        guard let report else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(ReportFormat.markdown(report), forType: .string)
+    }
+
+    func save(json: Bool) {
+        guard let report else { return }
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "launch-check-\(report.host).\(json ? "json" : "md")"
+        panel.allowedContentTypes = [json ? .json : (UTType(filenameExtension: "md") ?? .plainText)]
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try (json ? ReportFormat.json(report) : ReportFormat.markdown(report)).write(to: url, atomically: true, encoding: .utf8)
+        } catch {
+            NSAlert(error: error).runModal()
+        }
+    }
+
+    func open(_ address: String?) {
+        guard let address, let url = URL(string: address) else { return }
+        NSWorkspace.shared.open(url)
+    }
+}

@@ -1,0 +1,8 @@
+# Launchcheck
+
+> A free, open source Mac app and command-line tool that reads every page of a site and runs 84 checks for the mistakes that quietly cost a launch its search traffic.
+
+## Pages
+
+- [Launchcheck](https://brijraj-02.github.io/launchcheck/): what it checks, how the report reads, and where to download it
+- [Source and documentation](https://github.com/BRIJRAJ-02/launchcheck): the README, the full list of checks and how it is built

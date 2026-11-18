@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Launchcheck · Check a site before it goes live</title>
+<meta name="description" content="A free Mac app that reads every page of a site and runs 84 checks for the mistakes that quietly cost a launch its search traffic.">
+<link rel="canonical" href="https://brijraj-02.github.io/launchcheck/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://brijraj-02.github.io/launchcheck/">
+<meta property="og:title" content="Launchcheck · Check a site before it goes live">
+<meta property="og:description" content="A free Mac app that reads every page of a site and runs 84 checks for the mistakes that quietly cost a launch its search traffic.">
+<meta property="og:image" content="https://brijraj-02.github.io/launchcheck/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="assets/icon.png">
+<link rel="apple-touch-icon" href="assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Launchcheck","applicationCategory":"DeveloperApplication","operatingSystem":"macOS 14 or later","description":"Reads every page of a site and runs 84 checks for the mistakes that quietly cost a launch its search traffic.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://brijraj-02.github.io/launchcheck/","image":"https://brijraj-02.github.io/launchcheck/assets/og.png"}
+</script>
+<style>
+:root {
+  --paper: #f3f2ee;
+  --sheet: #fbfaf7;
+  --ink: #151514;
+  --muted: #6c6b66;
+  --faint: #9c9a93;
+  --line: rgba(21, 21, 20, 0.13);
+  --wash: rgba(21, 21, 20, 0.045);
+  --red: #e2463c;
+  --amber: #d9941a;
+  --green: #27a565;
+  --link: #1a0dab;
+  --display: "Bricolage Grotesque", "Hanken Grotesk", sans-serif;
+  --body: "Hanken Grotesk", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --gutter: clamp(20px, 4vw, 48px);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #121211;
+    --sheet: #1a1a18;
+    --ink: #f2f1ed;
+    --muted: #a3a19a;
+    --faint: #6f6d67;
+    --line: rgba(242, 241, 237, 0.14);
+    --wash: rgba(242, 241, 237, 0.055);
+    --red: #f0574c;
+    --amber: #e8a630;
+    --green: #3cc47e;
+    --link: #8ab4f8;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 17px/1.55 var(--body);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+/* The page is an inspection sheet: a fine dot grid, fading out below the fold. */
+body::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 900px;
+  background-image: radial-gradient(var(--line) 1px, transparent 1px);
+  background-size: 22px 22px;
+  -webkit-mask-image: linear-gradient(#000, transparent 85%);
+  mask-image: linear-gradient(#000, transparent 85%);
+  pointer-events: none;
+  z-index: -1;
+}
+a { color: inherit; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 4px; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 var(--gutter); }
+.mono { font-family: var(--mono); font-size: 12px; letter-spacing: 0.02em; }
+.eyebrow { font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.dot.error { background: var(--red); }
+.dot.warning { background: var(--amber); }
+.dot.notice { background: var(--faint); }
+.dot.ok { background: var(--green); }
+
+/* Nav */
+header.nav { display: flex; align-items: center; gap: 28px; padding: 22px 0; }
+.brand { display: flex; align-items: center; gap: 10px; font: 600 18px/1 var(--display); text-decoration: none; letter-spacing: -0.01em; }
+.brand img { width: 26px; height: 26px; }
+.nav nav { display: flex; gap: 22px; margin-left: auto; font-size: 15px; color: var(--muted); }
+.nav nav a { text-decoration: none; }
+.nav nav a:hover { color: var(--ink); }
+.btn {
+  display: inline-flex; align-items: center; gap: 9px; height: 46px; padding: 0 20px;
+  border-radius: 11px; border: 1px solid var(--line); background: var(--sheet); color: var(--ink);
+  font: 500 15.5px/1 var(--body); text-decoration: none; cursor: pointer;
+  transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
+.btn:hover { transform: translateY(-1px); border-color: var(--ink); }
+.btn:active { transform: translateY(0); }
+.btn.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.btn.small { height: 36px; padding: 0 14px; font-size: 14px; border-radius: 9px; }
+@media (max-width: 760px) { .nav nav { display: none; } .nav .btn { margin-left: auto; } }
+
+/* Hero */
+.hero { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr); gap: clamp(28px, 5vw, 72px); align-items: center; padding: clamp(36px, 7vw, 92px) 0 clamp(40px, 6vw, 72px); }
+h1 {
+  font: 600 clamp(46px, 7.2vw, 96px)/0.94 var(--display);
+  letter-spacing: -0.035em; margin: 18px 0 24px; text-wrap: balance;
+}
+h1 em { font-style: normal; color: var(--muted); }
+.lede { font-size: clamp(17px, 1.6vw, 20px); color: var(--muted); max-width: 33em; margin: 0 0 30px; }
+.lede b { color: var(--ink); font-weight: 500; }
+.cta { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.fine { margin-top: 16px; font-size: 14px; color: var(--faint); }
+@media (max-width: 940px) { .hero { grid-template-columns: 1fr; } }
+
+.rise { opacity: 0; transform: translateY(14px); animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) forwards; animation-delay: calc(var(--i, 0) * 90ms + 80ms); }
+@keyframes rise { to { opacity: 1; transform: none; } }
+
+/* The run: a check playing itself out */
+.run {
+  background: var(--sheet); border: 1px solid var(--line); border-radius: 18px;
+  box-shadow: 0 1px 0 var(--line), 0 30px 60px -30px rgba(0, 0, 0, 0.28);
+  overflow: hidden; min-height: 452px; display: flex; flex-direction: column;
+}
+.run-bar { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.run-url { flex: 1; display: flex; align-items: center; gap: 9px; height: 36px; padding: 0 12px; border-radius: 9px; background: var(--wash); border: 1px solid var(--line); font-size: 14.5px; }
+.run-url svg { opacity: 0.5; }
+.caret { width: 1.5px; height: 17px; background: var(--ink); animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.run-body { padding: 20px 20px 22px; flex: 1; display: flex; flex-direction: column; }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 11px; }
+.steps li { display: flex; align-items: center; gap: 11px; font-size: 14.5px; color: var(--muted); opacity: 0; transform: translateY(6px); transition: opacity 0.3s, transform 0.3s; }
+.steps li.on { opacity: 1; transform: none; }
+.steps li.live { color: var(--ink); font-weight: 500; }
+.steps .mark { width: 14px; display: grid; place-items: center; color: var(--green); font-size: 12px; }
+.steps li.live .mark::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--ink); animation: pulse 1s ease-in-out infinite; }
+.steps li.done .mark::before { content: "✓"; }
+@keyframes pulse { 50% { transform: scale(1.7); opacity: 0.4; } }
+.steps .n { margin-left: auto; font-family: var(--mono); font-size: 12px; color: var(--faint); font-variant-numeric: tabular-nums; }
+.bar { height: 3px; border-radius: 3px; background: var(--line); margin: 14px 0 0 25px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--ink); border-radius: 3px; transition: width 0.25s linear; }
+
+.verdict { margin-top: auto; padding-top: 20px; border-top: 1px solid var(--line); display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; opacity: 0; transform: translateY(10px); transition: opacity 0.5s, transform 0.5s; }
+.verdict.on { opacity: 1; transform: none; }
+.ring { position: relative; width: 92px; height: 92px; }
+.ring svg { transform: rotate(-90deg); }
+.ring circle { fill: none; stroke-width: 7; }
+.ring .track { stroke: var(--line); }
+.ring .value { stroke: var(--red); stroke-linecap: round; stroke-dasharray: 251.3; stroke-dashoffset: 251.3; transition: stroke-dashoffset 1.1s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.ring b { position: absolute; inset: 0; display: grid; place-items: center; font: 600 30px/1 var(--display); font-variant-numeric: tabular-nums; }
+.verdict .vt { font: 600 21px/1.15 var(--display); letter-spacing: -0.015em; margin: 0 0 8px; }
+.verdict ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; font-size: 14px; }
+.verdict li { display: flex; align-items: center; gap: 9px; }
+.again { margin-top: 14px; align-self: flex-start; background: none; border: 0; padding: 0; color: var(--faint); font: 400 13px var(--body); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; opacity: 0; transition: opacity 0.4s; }
+.again.on { opacity: 1; }
+.again:hover { color: var(--ink); }
+
+/* Screens */
+.screen { margin: 0 calc(var(--gutter) * -0.6); }
+.screen img { display: block; width: 100%; height: auto; }
+.reveal { opacity: 0; transform: translateY(22px); transition: opacity 0.8s cubic-bezier(0.2, 0.7, 0.2, 1), transform 0.8s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.reveal.in { opacity: 1; transform: none; }
+
+/* Sections, numbered like the lines of a report */
+section { border-top: 1px solid var(--line); padding: clamp(56px, 8vw, 104px) 0; }
+.head { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 0 20px; margin-bottom: clamp(28px, 4vw, 48px); }
+.head .num { font-family: var(--mono); font-size: 12px; color: var(--faint); padding-top: 12px; }
+h2 { font: 600 clamp(32px, 4.4vw, 56px)/1 var(--display); letter-spacing: -0.03em; margin: 0 0 16px; text-wrap: balance; max-width: 15em; }
+.head p { color: var(--muted); max-width: 36em; margin: 0; font-size: 18px; }
+.indent { margin-left: 108px; }
+@media (max-width: 760px) { .head { grid-template-columns: 1fr; } .head .num { padding: 0 0 10px; } .indent { margin-left: 0; } }
+
+/* Checks explorer */
+.chips { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 22px; }
+.chip { height: 32px; padding: 0 13px; border-radius: 16px; border: 1px solid var(--line); background: transparent; color: var(--ink); font: 500 14px var(--body); cursor: pointer; display: inline-flex; align-items: center; gap: 7px; transition: background 0.15s, color 0.15s, border-color 0.15s; }
+.chip span { font-family: var(--mono); font-size: 11px; color: var(--faint); }
+.chip:hover { border-color: var(--ink); }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.chip[aria-pressed="true"] span { color: inherit; opacity: 0.6; }
+.ledger { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; align-items: start; }
+@media (max-width: 900px) { .ledger { grid-template-columns: 1fr; } }
+.col h3 { font: 500 11.5px var(--mono); letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; display: flex; gap: 8px; align-items: center; }
+.col h3 span { color: var(--faint); }
+.rows { border: 1px solid var(--line); border-radius: 13px; background: var(--sheet); overflow: hidden; }
+.rows:empty::after { content: "Nothing in this column for this area."; display: block; padding: 14px; font-size: 14px; color: var(--faint); }
+details { border-top: 1px solid var(--line); }
+details:first-child { border-top: 0; }
+summary { list-style: none; display: flex; align-items: center; gap: 11px; padding: 12px 14px; font-size: 14.5px; font-weight: 500; cursor: pointer; line-height: 1.3; }
+summary::-webkit-details-marker { display: none; }
+summary::after { content: "+"; margin-left: auto; font-family: var(--mono); color: var(--faint); transition: transform 0.2s; }
+details[open] summary::after { transform: rotate(45deg); }
+summary:hover { background: var(--wash); }
+details p { margin: 0; padding: 0 14px 14px 33px; font-size: 14px; color: var(--muted); }
+details .area { display: block; margin-top: 7px; font-family: var(--mono); font-size: 11px; color: var(--faint); letter-spacing: 0.04em; text-transform: uppercase; }
+
+/* Split feature */
+.split { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: clamp(24px, 4vw, 56px); align-items: center; }
+.split.flip { grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr); }
+.split.flip .copy { order: 2; }
+@media (max-width: 940px) { .split, .split.flip { grid-template-columns: 1fr; } .split.flip .copy { order: 0; } }
+.copy ul { list-style: none; padding: 0; margin: 22px 0 0; display: grid; gap: 12px; }
+.copy li { display: grid; grid-template-columns: 18px 1fr; gap: 10px; font-size: 16px; color: var(--muted); }
+.copy li b { color: var(--ink); font-weight: 500; }
+.copy li::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ink); margin-top: 9px; }
+
+/* Try it: the search result */
+.try { margin-top: 26px; border: 1px solid var(--line); border-radius: 14px; background: var(--sheet); padding: 16px; }
+.try label { display: block; margin-bottom: 8px; }
+.try input { width: 100%; height: 40px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--wash); color: var(--ink); font: 400 15px var(--body); }
+.serp { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.serp .site { display: flex; align-items: center; gap: 9px; font-size: 13px; line-height: 1.25; }
+.serp .site i { width: 26px; height: 26px; border-radius: 50%; background: var(--wash); display: grid; place-items: center; font: 600 12px var(--body); font-style: normal; }
+.serp .site small { display: block; color: var(--muted); font-size: 12px; }
+.serp .t { color: var(--link); font-size: 19px; line-height: 1.3; margin: 8px 0 4px; overflow-wrap: anywhere; }
+.serp .d { color: var(--muted); font-size: 14px; margin: 0; }
+.count { display: flex; align-items: center; gap: 7px; margin-top: 12px; font-family: var(--mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* Terminal */
+.term { background: #111110; color: #e9e8e3; border-radius: 16px; padding: 22px 24px; font: 400 13.5px/1.75 var(--mono); overflow-x: auto; border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 30px 60px -34px rgba(0, 0, 0, 0.5); }
+.term .p { color: #8c8a84; }
+.term .r { color: #f0574c; }
+.term .g { color: #3cc47e; }
+.term .a { color: #e8a630; }
+.term .dim { color: #77756f; }
+
+/* Principles */
+.rules { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--sheet); }
+.rules div { padding: 24px 26px; border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
+.rules div:nth-child(-n + 2) { border-top: 0; }
+.rules div:nth-child(odd) { border-left: 0; }
+.rules h3 { font: 600 19px/1.2 var(--display); letter-spacing: -0.01em; margin: 0 0 7px; }
+.rules p { margin: 0; color: var(--muted); font-size: 15.5px; }
+@media (max-width: 760px) { .rules { grid-template-columns: 1fr; } .rules div { border-left: 0; } .rules div:nth-child(2) { border-top: 1px solid var(--line); } }
+
+/* Closing */
+.close { text-align: center; padding: clamp(72px, 11vw, 150px) 0; }
+.close h2 { margin: 0 auto 26px; max-width: 12em; font-size: clamp(40px, 6.4vw, 88px); line-height: 0.95; }
+.close .cta { justify-content: center; }
+footer { border-top: 1px solid var(--line); padding: 26px 0 40px; display: flex; flex-wrap: wrap; gap: 8px 24px; font-size: 14px; color: var(--muted); }
+footer a { text-decoration: none; }
+footer a:hover { color: var(--ink); text-decoration: underline; }
+footer .sp { margin-left: auto; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .rise, .reveal { animation: none; opacity: 1; transform: none; transition: none; }
+  .caret, .steps li.live .mark::before { animation: none; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="nav">
+    <a class="brand" href="#top" aria-label="Launchcheck"><img src="assets/icon.png" alt="" width="26" height="26">Launchcheck</a>
+    <nav aria-label="Sections">
+      <a href="#checks">Checks</a>
+      <a href="#pages">Pages</a>
+      <a href="#changes">Changes</a>
+      <a href="#cli">Command line</a>
+      <a href="https://github.com/BRIJRAJ-02/launchcheck">GitHub</a>
+    </nav>
+    <a class="btn small primary" href="https://github.com/BRIJRAJ-02/launchcheck/releases/latest">Download</a>
+  </header>
+
+  <main id="top">
+    <div class="hero">
+      <div>
+        <div class="eyebrow rise" style="--i:0">Pre-launch site check for Mac</div>
+        <h1 class="rise" style="--i:1">Check a site <em>before</em> it goes live.</h1>
+        <p class="lede rise" style="--i:2">Launchcheck reads every page and runs <b>84 checks</b> for the mistakes that quietly cost a launch its search traffic. A noindex left on from staging. A canonical still pointing at webflow.io. A share image that 404s.</p>
+        <div class="cta rise" style="--i:3">
+          <a class="btn primary" href="https://github.com/BRIJRAJ-02/launchcheck/releases/latest">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2v8m0 0 3.2-3.2M8 10 4.8 6.8M2.5 13.5h11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Download for Mac
+          </a>
+          <a class="btn" href="https://github.com/BRIJRAJ-02/launchcheck">View the source</a>
+        </div>
+        <p class="fine rise" style="--i:4">Free and open source. macOS 14 or later. No account, nothing leaves your Mac but the requests to the site.</p>
+      </div>
+
+      <div class="run rise" style="--i:3" aria-label="A demonstration of Launchcheck checking a site">
+        <div class="run-bar">
+          <div class="run-url">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.2" stroke="currentColor" stroke-width="1.3"/><path d="M1.8 8h12.4M8 1.8c2 2.2 2 10.2 0 12.4M8 1.8c-2 2.2-2 10.2 0 12.4" stroke="currentColor" stroke-width="1.3"/></svg>
+            <span id="url"></span><span class="caret" id="caret"></span>
+          </div>
+          <span class="btn small primary" aria-hidden="true">Check</span>
+        </div>
+        <div class="run-body">
+          <ul class="steps" id="steps">
+            <li data-n="1" data-ms="500"><span class="mark"></span>Reading robots.txt<span class="n"></span></li>
+            <li data-n="1" data-ms="600"><span class="mark"></span>Reading the sitemap<span class="n"></span></li>
+            <li data-n="48" data-ms="1700"><span class="mark"></span>Reading pages<span class="n"></span></li>
+            <li data-n="312" data-ms="1500"><span class="mark"></span>Checking links<span class="n"></span></li>
+            <li data-n="96" data-ms="1000"><span class="mark"></span>Weighing images<span class="n"></span></li>
+            <li data-n="1" data-ms="500"><span class="mark"></span>Checking the domain<span class="n"></span></li>
+          </ul>
+          <div class="bar"><i id="bar"></i></div>
+          <div class="verdict" id="verdict">
+            <div class="ring">
+              <svg width="92" height="92" viewBox="0 0 92 92" aria-hidden="true"><circle class="track" cx="46" cy="46" r="40"/><circle class="value" id="ring" cx="46" cy="46" r="40"/></svg>
+              <b id="score">0</b>
+            </div>
+            <div>
+              <p class="vt">3 things to fix before launch</p>
+              <ul>
+                <li><span class="dot error"></span>2 pages are set to noindex</li>
+                <li><span class="dot error"></span>A canonical points at webflow.io</li>
+                <li><span class="dot error"></span>48 pages link to a page that 404s</li>
+              </ul>
+            </div>
+          </div>
+          <button class="again" id="again" type="button">Run it again</button>
+        </div>
+      </div>
+    </div>
+
+    <figure class="screen reveal" style="margin-top:0;margin-bottom:clamp(24px,5vw,60px)">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="assets/overview-dark.webp">
+        <img src="assets/overview.webp" width="2280" height="1600" alt="The Launchcheck overview: a score of 77, three things to fix before launch, scores for nine areas, and a list of where to start">
+      </picture>
+    </figure>
+
+    <section id="checks">
+      <div class="head">
+        <div class="num">01</div>
+        <div>
+          <h2>Eighty-four things, sorted by how much they matter.</h2>
+          <p>Every check explains itself in a sentence. Pick an area, then open any line to read why it is there.</p>
+        </div>
+      </div>
+      <div class="indent">
+        <div class="chips" id="chips" role="group" aria-label="Filter checks by area"></div>
+        <div class="ledger">
+          <div class="col"><h3><i class="dot error"></i>Fix before launch <span id="c-error"></span></h3><div class="rows" id="r-error"></div></div>
+          <div class="col"><h3><i class="dot warning"></i>Should fix <span id="c-warning"></span></h3><div class="rows" id="r-warning"></div></div>
+          <div class="col"><h3><i class="dot notice"></i>Worth a look <span id="c-notice"></span></h3><div class="rows" id="r-notice"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="pages">
+      <div class="split">
+        <div class="copy">
+          <div class="eyebrow" style="margin-bottom:16px">02 · Pages</div>
+          <h2>See every page the way it will be seen.</h2>
+          <p style="color:var(--muted);margin:0">Pick a page and Launchcheck shows it as a search result and as a link card, cut exactly where they would be cut. No more counting characters.</p>
+          <div class="try">
+            <label class="eyebrow" for="title">Try it: type a page title</label>
+            <input id="title" type="text" value="Pricing for rockets, anvils and giant magnets from Acme Rockets" autocomplete="off" spellcheck="false">
+            <div class="serp" aria-live="polite">
+              <div class="site"><i>A</i><div>acme-rockets.com<small>https://acme-rockets.com › pricing</small></div></div>
+              <div class="t" id="serp-title"></div>
+              <p class="d">Rockets, anvils and everything a determined coyote could need, delivered to your canyon by next-day air.</p>
+              <div class="count"><span class="dot ok" id="serp-dot"></span><span id="serp-count"></span></div>
+            </div>
+          </div>
+        </div>
+        <figure class="screen reveal" style="margin:0">
+          <picture>
+            <source media="(prefers-color-scheme: dark)" srcset="assets/pages-dark.webp">
+            <img src="assets/pages.webp" width="2280" height="1600" loading="lazy" alt="The Pages tab: pages listed by how much there is to fix, with a search preview, a share card and details for the selected page">
+          </picture>
+        </figure>
+      </div>
+    </section>
+
+    <section id="changes">
+      <div class="split flip">
+        <figure class="screen reveal" style="margin:0">
+          <picture>
+            <source media="(prefers-color-scheme: dark)" srcset="assets/changes-dark.webp">
+            <img src="assets/changes.webp" width="2280" height="1600" loading="lazy" alt="The Changes tab: the score up eight points, three new problems, seven fixed, and a noindex added to the pricing page">
+          </picture>
+        </figure>
+        <div class="copy">
+          <div class="eyebrow" style="margin-bottom:16px">03 · Changes</div>
+          <h2>Know what the last deploy did.</h2>
+          <p style="color:var(--muted);margin:0">Every check is kept. The next one is compared with it, so a fix is confirmed and a regression is caught the day it ships.</p>
+          <ul>
+            <li><span><b>Fixed and new.</b> Which checks went green and which went red.</span></li>
+            <li><span><b>Page by page.</b> A noindex added, a canonical changed, an H1 rewritten, structured data dropped.</span></li>
+            <li><span><b>Before and after.</b> Run it on staging, then again once it is live.</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="cli">
+      <div class="head">
+        <div class="num">04</div>
+        <div>
+          <h2>The same engine, in a terminal.</h2>
+          <p>It exits with 1 when something must be fixed before launch, so a CI job can refuse to ship a site that would hide itself from search.</p>
+        </div>
+      </div>
+      <div class="indent">
+        <pre class="term reveal" tabindex="0" aria-label="Example command-line output"><span class="p">$</span> launchcheck acme-rockets.com
+
+https://www.acme-rockets.com/
+<span class="r">3 things to fix before launch</span>
+Score 77 of 100 (Not ready) <span class="dim">· 48 pages and 312 links checked in 9.4s</span>
+
+  Indexing         <span class="a">██████████████</span><span class="dim">░░░░░░</span> 71
+  Links            <span class="a">████████████████</span><span class="dim">░░░░</span> 82
+  Structured data  <span class="g">███████████████████</span><span class="dim">░</span> 95
+
+FIX BEFORE LAUNCH
+
+  <span class="r">✗</span> Pages are set to noindex (2)
+    <span class="dim">A noindex tag or header tells search engines to drop the page.</span>
+    - /pricing  <span class="dim">robots meta tag</span>
+    - /blog/launch-day  <span class="dim">robots meta tag</span>
+
+<span class="p">$</span> launchcheck acme-rockets.com --baseline before.json
+  <span class="g">✓</span> Fixed: Every page has a title
+  <span class="r">✗</span> New: robots.txt blocks AI search crawlers</pre>
+      </div>
+    </section>
+
+    <section>
+      <div class="head">
+        <div class="num">05</div>
+        <div>
+          <h2>A report you can trust is one that knows when to stay quiet.</h2>
+        </div>
+      </div>
+      <div class="indent rules reveal">
+        <div><h3>A blocker is never called good</h3><p>A site with anything to fix before launch reads “Not ready”, whatever its score says.</p></div>
+        <div><h3>Other people's 403 is not your broken link</h3><p>A link to another site is only called broken when the page is plainly gone.</p></div>
+        <div><h3>Training crawlers are your call</h3><p>Only the AI crawlers that answer questions and cite sources are checked. Blocking the rest is a business decision.</p></div>
+        <div><h3>What does not apply is left out</h3><p>A site in one language gets no International score at all, not a free pass.</p></div>
+      </div>
+    </section>
+
+    <div class="close">
+      <h2 class="reveal">Launch day should be boring.</h2>
+      <div class="cta">
+        <a class="btn primary" href="https://github.com/BRIJRAJ-02/launchcheck/releases/latest">Download for Mac</a>
+        <a class="btn" href="https://github.com/BRIJRAJ-02/launchcheck">Star it on GitHub</a>
+      </div>
+      <p class="fine">Free, open source, MIT licensed.</p>
+    </div>
+  </main>
+
+  <footer>
+    <span>Launchcheck</span>
+    <a href="https://github.com/BRIJRAJ-02/launchcheck">Source</a>
+    <a href="https://github.com/BRIJRAJ-02/launchcheck/releases/latest">Releases</a>
+    <a href="https://github.com/BRIJRAJ-02/launchcheck/issues">Report a problem</a>
+    <span class="sp">Made by <a href="https://www.brijrajrana.com">Brijraj Rana</a></span>
+  </footer>
+</div>
+
+<script type="application/json" id="check-data">[{"severity":"error","area":"Indexing","title":"robots.txt blocks every crawler","why":"A leftover “Disallow: /” keeps the whole site out of search. Remove it from robots.txt."},{"severity":"error","area":"Indexing","title":"robots.txt answers with a server error","why":"Crawlers treat a server error on robots.txt as “stay out of everything”. It must answer with the file or a plain 404."},{"severity":"error","area":"Indexing","title":"Pages are set to noindex","why":"A noindex tag or header tells search engines to drop the page. It is often left on from staging."},{"severity":"error","area":"Indexing","title":"Sitemap lists pages that do not load","why":"Search engines are being sent to pages that return an error. Remove them from the sitemap or restore the pages."},{"severity":"error","area":"Indexing","title":"Sitemap lists pages on another domain","why":"A sitemap should only list this site's own pages. Other domains here usually mean it was generated on staging."},{"severity":"error","area":"Indexing","title":"A sitemap file lists more than 50,000 pages","why":"Search engines stop reading a sitemap file at 50,000 addresses. Split it and list the parts in a sitemap index."},{"severity":"error","area":"Indexing","title":"Pages still point at a staging domain","why":"Links, canonicals or share images that point at a staging address will send visitors and search engines to the wrong site."},{"severity":"error","area":"Indexing","title":"Canonical tags point to another domain","why":"A canonical on another domain tells search engines the real page lives there, and this one gets dropped."},{"severity":"error","area":"Content","title":"Pages have no title","why":"The title is the headline of a search result. Without one, search engines make something up."},{"severity":"error","area":"Links","title":"Broken links between pages","why":"These links go to pages on this site that do not load."},{"severity":"error","area":"Images","title":"Images do not load","why":"These image addresses return an error, so visitors see a gap or a broken icon."},{"severity":"error","area":"Sharing","title":"Share images do not load","why":"The og:image address returns an error, so shared links will show no picture."},{"severity":"warning","area":"Indexing","title":"No sitemap found","why":"A sitemap tells search engines which pages exist. Publish one at /sitemap.xml and name it in robots.txt."},{"severity":"warning","area":"Indexing","title":"Sitemap lists pages that redirect","why":"List the final address of each page, not one that redirects to it."},{"severity":"warning","area":"Indexing","title":"Sitemap lists pages that robots.txt blocks","why":"The sitemap invites crawlers to pages robots.txt turns them away from. Decide which one is right."},{"severity":"warning","area":"Indexing","title":"Sitemap lists pages whose canonical is another page","why":"A sitemap should list the canonical address of each page. These pages say the real one is elsewhere."},{"severity":"warning","area":"Links","title":"Pages that nothing links to","why":"These pages are in the sitemap, but no page that was read links to them. Visitors cannot reach them and search engines give them little weight."},{"severity":"warning","area":"Indexing","title":"Pages are empty until JavaScript runs","why":"The HTML the server sends has almost no text, only a mount point for a script. Crawlers and AI assistants that do not run JavaScript see a blank page."},{"severity":"warning","area":"Content","title":"Pages repeat a tag that should appear once","why":"With two titles, descriptions or canonicals in one page, it is a toss-up which one a search engine reads."},{"severity":"warning","area":"Content","title":"Pages share the same title","why":"Pages with the same title compete with each other and look identical in search results."},{"severity":"warning","area":"Content","title":"Pages have no meta description","why":"The description is the text under the title in a search result. Without one, search engines pick a snippet themselves."},{"severity":"warning","area":"Content","title":"Pages share the same meta description","why":"A description copied across pages says nothing about any one of them."},{"severity":"warning","area":"Indexing","title":"Pages have no canonical tag","why":"A canonical tag names the one true address of a page, so tracking parameters and duplicates do not split its ranking."},{"severity":"warning","area":"Content","title":"Pages have no H1","why":"The H1 is the page's main heading, for readers and search engines alike."},{"severity":"warning","area":"Content","title":"Pages do not declare a character set","why":"Without a charset, browsers guess, and accented letters and symbols can turn into gibberish."},{"severity":"warning","area":"Indexing","title":"Pages tell crawlers not to follow their links","why":"A page-level nofollow stops search engines passing through to the pages it links to."},{"severity":"warning","area":"Links","title":"Pages redirect with a meta refresh","why":"A meta refresh is a slow, unreliable redirect. Use a server-side 301 instead."},{"severity":"warning","area":"Links","title":"Redirects that pass through more than one hop","why":"Each extra hop slows the visitor down and wastes crawl budget. Point the first address straight at the last."},{"severity":"warning","area":"Links","title":"Links have no text","why":"A link with no words and no image description tells neither a screen reader nor a search engine where it leads."},{"severity":"warning","area":"Sharing","title":"Pages have no share image","why":"Without an og:image, links shared on social apps and in chats show a blank card."},{"severity":"warning","area":"Images","title":"Images have no alt text","why":"Alt text is what screen readers speak and what search engines read. Decorative images should have an empty alt, not a missing one."},{"severity":"warning","area":"Images","title":"Images over 500 KB","why":"Images this large slow the page noticeably, most of all on phones. Resize or recompress them."},{"severity":"warning","area":"Content","title":"Pages have no viewport tag","why":"Without a viewport tag the page renders zoomed out on phones, and Google indexes the mobile version."},{"severity":"warning","area":"Links","title":"Broken links to other sites","why":"These links go to pages on other sites that no longer exist."},{"severity":"warning","area":"Security","title":"Pages load files over plain http","why":"Browsers block or flag http files on an https page."},{"severity":"warning","area":"Content","title":"Placeholder text left in","why":"“Lorem ipsum” is still on the page."},{"severity":"warning","area":"Security","title":"http:// does not redirect to https://","why":"Visitors and links using the old http address should land on the secure one."},{"severity":"warning","area":"Security","title":"No Strict-Transport-Security header","why":"This header tells browsers to always use https for the site, closing the gap where a first visit can be intercepted."},{"severity":"warning","area":"Indexing","title":"The site answers on both www and non-www","why":"Two addresses serving the same pages split links and ranking between them. Redirect one to the other."},{"severity":"warning","area":"Indexing","title":"Missing pages do not return a 404","why":"An address that does not exist should say so with a 404 status, or search engines index error pages as real content."},{"severity":"warning","area":"Performance","title":"Pages over 2 MB of HTML","why":"Googlebot reads only the first 2 MB of a page's HTML. Anything after that, including structured data, is not indexed."},{"severity":"warning","area":"Performance","title":"Pages are sent uncompressed","why":"Turning on gzip or Brotli on the server typically cuts HTML to a quarter of its size."},{"severity":"warning","area":"Structured data","title":"Structured data that cannot be read","why":"A JSON-LD block with a syntax error is ignored entirely, along with any rich result it would have earned."},{"severity":"warning","area":"Structured data","title":"Structured data is missing required properties","why":"Without these properties the markup does not qualify for the rich result it describes."},{"severity":"warning","area":"Structured data","title":"Structured data still has template placeholders","why":"Values like “[Business Name]” were never filled in."},{"severity":"warning","area":"AI search","title":"robots.txt blocks AI search crawlers","why":"These crawlers fetch pages to answer questions in ChatGPT, Claude and Perplexity and to cite sources. Blocking them keeps the site out of those answers. Crawlers that only gather training data are a separate choice and are not flagged."},{"severity":"warning","area":"AI search","title":"llms.txt is not in the expected format","why":"An llms.txt should open with a “# Title” line and list pages as Markdown links."},{"severity":"warning","area":"International","title":"Hreflang tags use codes that do not exist","why":"The language must be a two-letter ISO 639-1 code and the region a two-letter ISO 3166-1 code, as in en-GB. Invalid tags are ignored."},{"severity":"warning","area":"International","title":"Hreflang sets do not include the page itself","why":"Each page must list itself among its language versions, or the whole set can be disregarded."},{"severity":"warning","area":"International","title":"Hreflang links are not returned","why":"If page A names B as its translation, B must name A back. One-way links are ignored."},{"severity":"notice","area":"Indexing","title":"No robots.txt","why":"Not required, but it is where crawlers look first and where the sitemap is announced."},{"severity":"notice","area":"Indexing","title":"robots.txt does not name the sitemap","why":"A “Sitemap:” line in robots.txt lets every crawler find it without being told."},{"severity":"notice","area":"Indexing","title":"Every sitemap entry has the same last-modified date","why":"Identical dates mean the sitemap stamps the build time on everything, so search engines learn to ignore them."},{"severity":"notice","area":"Indexing","title":"Sitemap lists pages set to noindex","why":"A sitemap asks for pages to be indexed; noindex asks for the opposite. Remove one or the other."},{"severity":"notice","area":"Indexing","title":"Linked pages are missing from the sitemap","why":"These pages are linked from the site and load fine, but the sitemap does not mention them."},{"severity":"notice","area":"Links","title":"Pages more than three clicks from the home page","why":"The further a page is from the home page, the less often it is crawled and the less weight it carries."},{"severity":"notice","area":"Links","title":"Links between pages go through a redirect","why":"Link to the final address. It saves visitors a round trip and keeps the link's full value."},{"severity":"notice","area":"Links","title":"Redirects marked as temporary","why":"A 302 or 307 says the move is temporary, so search engines keep the old address. Use a 301 for a move that is meant to last."},{"severity":"notice","area":"Links","title":"Links that just say “click here”","why":"Words like “click here” or “read more” waste the one place a link can say what it leads to."},{"severity":"notice","area":"Security","title":"Links to http:// addresses","why":"These links leave a secure page for an insecure address. Most destinations have an https version."},{"severity":"notice","area":"Indexing","title":"Addresses that are long or untidy","why":"Capital letters, underscores, doubled slashes and very long addresses are harder to share and easier to mistype."},{"severity":"notice","area":"Content","title":"Titles are very short or very long","why":"Search results show roughly 60 characters. Longer titles get cut off; very short ones waste the space."},{"severity":"notice","area":"Content","title":"Meta descriptions are very short or very long","why":"Search results show roughly 160 characters. Aim for 50 to 160."},{"severity":"notice","area":"Indexing","title":"Canonical tags point to a different page","why":"This can be deliberate. If it is not, the page is telling search engines to index a different one instead."},{"severity":"notice","area":"Content","title":"Pages have more than one H1","why":"One main heading per page keeps the outline clear."},{"severity":"notice","area":"Content","title":"Headings skip a level","why":"An H2 followed by an H4 leaves a hole in the outline that screen readers and AI summaries rely on."},{"severity":"notice","area":"Content","title":"Pages with under 200 words","why":"There is little here for a search engine to rank. Fine for a contact page, a problem for a page meant to be found."},{"severity":"notice","area":"Content","title":"Pages have no doctype","why":"Without <!doctype html> browsers fall back to a legacy rendering mode."},{"severity":"notice","area":"Sharing","title":"Pages are missing share titles or descriptions","why":"og:title and og:description control the text on a shared link."},{"severity":"notice","area":"Sharing","title":"Pages have no Twitter card tag","why":"A twitter:card tag chooses between a small thumbnail and a large image when the link is posted on X."},{"severity":"notice","area":"Sharing","title":"og:url differs from the canonical","why":"Shares and likes are counted against og:url. If it differs from the canonical they are credited to a different address."},{"severity":"notice","area":"Images","title":"Images over 200 KB","why":"Worth a second look: most content images can be well under 200 KB in a modern format."},{"severity":"notice","area":"Images","title":"Images have no width and height","why":"Without both attributes the browser cannot reserve space, so the page jumps as images arrive."},{"severity":"notice","area":"Images","title":"Alt text that says nothing","why":"A filename, a single generic word or a paragraph is not a description. Aim for a short phrase saying what the image shows."},{"severity":"notice","area":"Images","title":"The first image on the page is lazy-loaded","why":"Lazy-loading the first image usually delays the largest thing on screen. Keep lazy loading for images further down."},{"severity":"notice","area":"Performance","title":"Pages are slow to start answering","why":"The server took over a second to begin its reply, measured from this Mac. Everything else on the page waits on that."},{"severity":"notice","area":"Performance","title":"Scripts in the head hold up the page","why":"A script in the head without async or defer stops the page drawing until it has downloaded and run."},{"severity":"notice","area":"Security","title":"Recommended security headers are missing","why":"Not a ranking factor, but each of these closes off a common attack on visitors."},{"severity":"notice","area":"Structured data","title":"No structured data on the site","why":"Schema.org markup tells search engines what a page is (an organisation, an article, a product) and unlocks rich results."},{"severity":"notice","area":"Structured data","title":"Structured data types that no longer earn a rich result","why":"Search engines have stopped showing rich results for these types. They do no harm, but they no longer do any good."},{"severity":"notice","area":"AI search","title":"No llms.txt","why":"An optional Markdown file at /llms.txt that points AI assistants at the pages that matter. Search engines ignore it."},{"severity":"notice","area":"International","title":"Hreflang sets have no x-default","why":"x-default names the page for visitors whose language is not listed."},{"severity":"notice","area":"Content","title":"Pages do not declare a language","why":"The lang attribute on <html> helps screen readers and translation tools."},{"severity":"notice","area":"Content","title":"No favicon","why":"The small icon in browser tabs and some search results."}]</script>
+<script>
+(function () {
+  var calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // The run in the hero: a check playing itself out, then settling on its verdict.
+  var url = document.getElementById("url"), caret = document.getElementById("caret");
+  var steps = Array.prototype.slice.call(document.querySelectorAll("#steps li"));
+  var bar = document.getElementById("bar"), verdict = document.getElementById("verdict");
+  var ring = document.getElementById("ring"), score = document.getElementById("score"), again = document.getElementById("again");
+  var address = "acme-rockets.com", timers = [];
+
+  function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
+
+  function settle() {
+    url.textContent = address;
+    caret.style.display = "none";
+    steps.forEach(function (li) {
+      li.className = "on done";
+      var n = +li.dataset.n;
+      li.querySelector(".n").textContent = n > 1 ? n : "";
+    });
+    bar.style.width = "100%";
+    verdict.classList.add("on");
+    ring.style.strokeDashoffset = 251.3 * (1 - 0.77);
+    score.textContent = "77";
+    again.classList.add("on");
+  }
+
+  function count(el, to, ms) {
+    var start = performance.now();
+    (function tick(now) {
+      var t = Math.min(1, (now - start) / ms);
+      el.textContent = Math.round(to * t);
+      if (t < 1) requestAnimationFrame(tick);
+    })(start);
+  }
+
+  function play() {
+    timers.forEach(clearTimeout);
+    timers = [];
+    url.textContent = "";
+    caret.style.display = "";
+    steps.forEach(function (li) { li.className = ""; li.querySelector(".n").textContent = ""; });
+    bar.style.transition = "none";
+    bar.style.width = "0";
+    verdict.classList.remove("on");
+    again.classList.remove("on");
+    ring.style.transition = "none";
+    ring.style.strokeDashoffset = 251.3;
+    score.textContent = "0";
+
+    var at = 500;
+    address.split("").forEach(function (letter, i) {
+      later(function () { url.textContent += letter; }, at + i * 55);
+    });
+    at += address.length * 55 + 450;
+    later(function () { caret.style.display = "none"; }, at);
+
+    var total = steps.reduce(function (sum, li) { return sum + +li.dataset.ms; }, 0), spent = 0;
+    steps.forEach(function (li) {
+      var ms = +li.dataset.ms, n = +li.dataset.n, begin = at;
+      later(function () {
+        li.className = "on live";
+        bar.style.transition = "width " + ms + "ms linear";
+        bar.style.width = ((spent + ms) / total * 100) + "%";
+        spent += ms;
+        if (n > 1) count(li.querySelector(".n"), n, ms - 80);
+      }, begin);
+      later(function () { li.className = "on done"; if (n > 1) li.querySelector(".n").textContent = n; }, begin + ms);
+      at += ms;
+    });
+    later(function () {
+      verdict.classList.add("on");
+      ring.style.transition = "";
+      ring.style.strokeDashoffset = 251.3 * (1 - 0.77);
+      count(score, 77, 1000);
+    }, at + 150);
+    later(function () { again.classList.add("on"); }, at + 1500);
+  }
+
+  if (calm) settle(); else play();
+  again.addEventListener("click", function () { if (calm) settle(); else play(); });
+
+  // Things that arrive as they are scrolled to.
+  var reveals = document.querySelectorAll(".reveal");
+  if ("IntersectionObserver" in window && !calm) {
+    var seen = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) { entry.target.classList.add("in"); seen.unobserve(entry.target); }
+      });
+    }, { rootMargin: "0px 0px -8% 0px" });
+    reveals.forEach(function (el) { seen.observe(el); });
+  } else {
+    reveals.forEach(function (el) { el.classList.add("in"); });
+  }
+
+  // The checks, straight from the app's own catalogue.
+  var checks = JSON.parse(document.getElementById("check-data").textContent);
+  var chips = document.getElementById("chips"), areas = [], chosen = "Indexing";
+  checks.forEach(function (c) { if (areas.indexOf(c.area) < 0) areas.push(c.area); });
+
+  function draw() {
+    ["error", "warning", "notice"].forEach(function (level) {
+      var rows = document.getElementById("r-" + level), list = checks.filter(function (c) {
+        return c.severity === level && (chosen === "All" || c.area === chosen);
+      });
+      rows.textContent = "";
+      document.getElementById("c-" + level).textContent = list.length;
+      list.forEach(function (c) {
+        var item = document.createElement("details"), head = document.createElement("summary"), why = document.createElement("p");
+        var dot = document.createElement("span");
+        dot.className = "dot " + level;
+        head.appendChild(dot);
+        head.appendChild(document.createTextNode(c.title));
+        why.textContent = c.why;
+        if (chosen === "All") {
+          var area = document.createElement("span");
+          area.className = "area";
+          area.textContent = c.area;
+          why.appendChild(area);
+        }
+        item.appendChild(head);
+        item.appendChild(why);
+        rows.appendChild(item);
+      });
+    });
+    Array.prototype.forEach.call(chips.children, function (chip) {
+      chip.setAttribute("aria-pressed", chip.dataset.area === chosen ? "true" : "false");
+    });
+  }
+
+  ["All"].concat(areas).forEach(function (area) {
+    var chip = document.createElement("button"), n = document.createElement("span");
+    chip.type = "button";
+    chip.className = "chip";
+    chip.dataset.area = area;
+    chip.textContent = area;
+    n.textContent = area === "All" ? checks.length : checks.filter(function (c) { return c.area === area; }).length;
+    chip.appendChild(n);
+    chip.addEventListener("click", function () { chosen = area; draw(); });
+    chips.appendChild(chip);
+  });
+  draw();
+
+  // The search result that cuts a title where a search engine would.
+  var input = document.getElementById("title"), out = document.getElementById("serp-title");
+  var dot = document.getElementById("serp-dot"), tally = document.getElementById("serp-count");
+  function snippet() {
+    var text = input.value.trim(), n = text.length;
+    out.textContent = n === 0 ? "No title: the search engine will invent one" : (n > 60 ? text.slice(0, 59).trim() + "…" : text);
+    dot.className = "dot " + (n === 0 ? "error" : n > 60 ? "warning" : n < 10 ? "notice" : "ok");
+    tally.textContent = n === 0 ? "0 characters" : n > 60 ? n + " characters, cut at 60" : n < 10 ? n + " characters, room for more" : n + " characters, fits";
+  }
+  input.addEventListener("input", snippet);
+  snippet();
+})();
+</script>
+</body>
+</html>
