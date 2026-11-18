@@ -55,7 +55,9 @@ public final class URLSessionFetcher: NSObject, Fetcher, URLSessionTaskDelegate,
         configuration.httpCookieStorage = nil
         configuration.httpAdditionalHeaders = [
             "User-Agent": "Mozilla/5.0 (compatible; Launchcheck/0.1)",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            // What a browser sends. The image types matter: an image service that can answer with AVIF or WebP
+            // only does so when asked, and weighing the PNG it falls back to would overstate every image.
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
         ]
         session = URLSession(configuration: configuration, delegate: self, delegateQueue: nil)
     }

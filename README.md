@@ -222,6 +222,7 @@ Some judgement calls, so the report stays trustworthy:
 - **A redirect is only called ready when the match is plain.** The same address once tidied (case, a trailing slash, `.html`, `.php`, `/index`), the same page under another name for its section (`/blog/` and `/posts/`, with any dates dropped), or a last part at least 85% alike and clearly ahead of the next best. Titles and main headings have to be 90% alike. Anything looser, down to 60% for addresses and 65% for titles, is offered as a guess and marked.
 - **Webflow steps are only given where the place is certain.** A fix that has no setting of its own in Webflow, such as a response header, says how to fix it in general and stops there.
 - **Checks that do not apply are left out, not passed.** A site in one language has no International score at all.
+- **Images are weighed as a browser would receive them.** Requests say they accept AVIF and WebP, so a site that serves modern formats on request is not marked down for the PNG it keeps as a fallback.
 - **Response time is measured from your Mac**, once per page. It is a hint, not a lab result.
 
 What it deliberately does not do: anything that needs a paid data source, a Google account or a judgement call a script cannot make. No keyword research, backlink counts, Core Web Vitals field data or content quality scoring.
