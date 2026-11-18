@@ -1,85 +1,102 @@
 import LaunchcheckCore
 import SwiftUI
 
+/// What is different since the last check of this site.
 struct ChangesTab: View {
     @ObservedObject var model: AuditModel
     let report: Report
 
     var body: some View {
-        Scroller {
-            VStack(alignment: .leading, spacing: 22) {
-                if let comparison = model.comparison {
-                    summary(comparison)
+        if let comparison = model.comparison {
+            Scroller {
+                VStack(alignment: .leading, spacing: 28) {
+                    headline(comparison)
                     if comparison.isEmpty {
-                        Text("Nothing has changed since then.")
+                        Text("Nothing changed between the two checks.")
                             .font(.system(size: 13))
                             .foregroundStyle(.secondary)
                     }
                     if !comparison.introduced.isEmpty { checks("New problems", comparison.introduced, fixed: false) }
                     if !comparison.fixed.isEmpty { checks("Fixed", comparison.fixed, fixed: true) }
                     if !comparison.changes.isEmpty { pages(comparison.changes) }
-                    if !comparison.pagesAdded.isEmpty { addresses("Pages added", comparison.pagesAdded) }
-                    if !comparison.pagesRemoved.isEmpty { addresses("Pages no longer found", comparison.pagesRemoved) }
-                } else {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("This is the first check of \(report.host).")
-                            .font(.system(size: 18, weight: .semibold))
-                        Text("Check it again after making changes and this tab will show what was fixed, what is new, and which pages changed their title, canonical, headings or structured data.")
-                            .font(.system(size: 13))
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .frame(maxWidth: 520, alignment: .leading)
-                    }
+                    if !comparison.pagesAdded.isEmpty { addresses("Pages added", comparison.pagesAdded, linked: true) }
+                    if !comparison.pagesRemoved.isEmpty { addresses("Pages no longer found", comparison.pagesRemoved, linked: false) }
+                }
+                .padding(.horizontal, 28)
+                .padding(.top, 30)
+                .padding(.bottom, 28)
+                .frame(maxWidth: 760, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Nothing to compare yet")
+                    .font(.system(size: 26, weight: .semibold))
+                    .tracking(-0.3)
+                Text("This is the first check of \(report.host). Check it again after the next deploy and this tab lists what was fixed, what is new, and which pages changed.")
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+                    .lineSpacing(3)
+                    .frame(maxWidth: 480, alignment: .leading)
+            }
+            .padding(.horizontal, 28)
+            .padding(.top, 44)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+    }
+
+    // MARK: Score, then and now
+
+    private func headline(_ comparison: Comparison) -> some View {
+        let change = comparison.scoreAfter - comparison.scoreBefore
+        let title = change == 0 ? "Same score" : "\(change > 0 ? "Up" : "Down") \(abs(change)) \(abs(change) == 1 ? "point" : "points")"
+        return HStack(alignment: .top, spacing: 24) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(title)
+                    .font(.system(size: 30, weight: .semibold))
+                    .tracking(-0.4)
+                HStack(spacing: 6) {
+                    Text("\(comparison.scoreBefore)").foregroundStyle(.secondary)
+                    Image(systemName: "arrow.right").font(.system(size: 9, weight: .semibold)).foregroundStyle(.tertiary)
+                    Text("\(comparison.scoreAfter)").fontWeight(.semibold)
+                    Text("· compared with the check \(comparison.since.ago)").foregroundStyle(.secondary)
+                }
+                .font(.system(size: 12).monospacedDigit())
+            }
+            Spacer(minLength: 12)
+            if model.trail.count > 1 {
+                VStack(alignment: .trailing, spacing: 4) {
+                    Trend(scores: model.trail, color: report.count(.error) > 0 ? Tone.error : Tone.of(score: report.score))
+                        .frame(width: 180, height: 40)
+                    Text("Last \(model.trail.count) checks")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
                 }
             }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 24)
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
-    private func summary(_ comparison: Comparison) -> some View {
-        let delta = comparison.scoreAfter - comparison.scoreBefore
-        return HStack(alignment: .center, spacing: 18) {
-            ScoreRing(score: comparison.scoreBefore, size: 54, line: 5).opacity(0.55)
-            Image(systemName: "arrow.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
-            ScoreRing(score: comparison.scoreAfter, blocked: report.count(.error) > 0, size: 54, line: 5)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(delta == 0 ? "Score unchanged" : "\(delta > 0 ? "Up" : "Down") \(abs(delta)) \(abs(delta) == 1 ? "point" : "points")")
-                    .font(.system(size: 20, weight: .semibold))
-                Text("Compared with the check \(comparison.since.ago)")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.leading, 6)
-        }
-    }
+    // MARK: Lists
 
     private func checks(_ title: String, _ checks: [Check], fixed: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Eyebrow(text: "\(title) \(checks.count)")
-            Card {
-                VStack(spacing: 0) {
-                    ForEach(Array(checks.enumerated()), id: \.element.id) { index, check in
-                        if index > 0 { Tone.hairline.frame(height: 1) }
-                        Button {
-                            if !fixed { model.reveal(check) }
-                        } label: {
-                            HStack(spacing: 10) {
-                                if fixed {
-                                    Image(systemName: "checkmark").font(.system(size: 9, weight: .bold)).foregroundStyle(Tone.passed).frame(width: 10)
-                                } else {
-                                    Circle().fill(Tone.of(check.severity)).frame(width: 7, height: 7).frame(width: 10)
-                                }
-                                Text(fixed ? check.passed : check.title).font(.system(size: 12.5, weight: .medium))
-                                Spacer()
-                                Text(check.category.title).font(.system(size: 10.5, weight: .medium)).foregroundStyle(.secondary)
-                            }
-                            .padding(.horizontal, 12)
-                            .frame(height: 36)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
+        VStack(alignment: .leading, spacing: 6) {
+            SectionLabel(text: title, count: checks.count)
+            VStack(spacing: 0) {
+                ForEach(Array(checks.enumerated()), id: \.element.id) { index, check in
+                    if index > 0 { Tone.hairline.frame(height: 1) }
+                    let row = HStack(spacing: 10) {
+                        Mark(fixed ? .passed : Mark.Kind(check.severity))
+                        Text(fixed ? check.passed : check.title)
+                            .font(.system(size: 13, weight: fixed ? .regular : .medium))
+                            .lineLimit(1)
+                        Spacer(minLength: 10)
+                        Text(check.category.title).font(.system(size: 11.5)).foregroundStyle(.secondary)
+                    }
+                    .frame(height: 34)
+                    if fixed {
+                        row
+                    } else {
+                        Button { model.reveal(check) } label: { row }.buttonStyle(RowStyle(inset: 0))
                     }
                 }
             }
@@ -87,17 +104,17 @@ struct ChangesTab: View {
     }
 
     private func pages(_ changes: [Change]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Eyebrow(text: "Page changes \(changes.count)")
-            Card {
-                VStack(spacing: 0) {
-                    ForEach(Array(changes.prefix(60).enumerated()), id: \.element.id) { index, change in
-                        if index > 0 { Tone.hairline.frame(height: 1) }
+        VStack(alignment: .leading, spacing: 6) {
+            SectionLabel(text: "Page changes", count: changes.count)
+            VStack(spacing: 0) {
+                ForEach(Array(changes.enumerated()), id: \.element.id) { index, change in
+                    if index > 0 { Tone.hairline.frame(height: 1) }
+                    Button { model.showPage(change.url) } label: {
                         HStack(alignment: .firstTextBaseline, spacing: 10) {
-                            Circle().fill(color(change.level)).frame(width: 7, height: 7).frame(width: 10).offset(y: -1)
-                            VStack(alignment: .leading, spacing: 1) {
-                                HStack(spacing: 8) {
-                                    Text(change.summary).font(.system(size: 12.5, weight: .medium))
+                            Mark(change.level).alignmentGuide(.firstTextBaseline) { $0[.bottom] - 2 }
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                    Text(change.summary).font(.system(size: 13, weight: .medium))
                                     Text(ReportFormat.short(change.url, site: report.site))
                                         .font(.system(size: 11.5, design: .monospaced))
                                         .foregroundStyle(.secondary)
@@ -105,35 +122,40 @@ struct ChangesTab: View {
                                         .truncationMode(.middle)
                                 }
                                 if let detail = change.detail {
-                                    Text(detail).font(.system(size: 11.5)).foregroundStyle(.secondary).lineLimit(2).truncationMode(.middle)
+                                    Text(detail)
+                                        .font(.system(size: 11.5))
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(2)
+                                        .multilineTextAlignment(.leading)
                                 }
                             }
                             Spacer(minLength: 0)
                         }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
+                        .padding(.vertical, 9)
                     }
+                    .buttonStyle(RowStyle(inset: 0))
                 }
             }
         }
     }
 
-    private func color(_ level: Change.Level) -> Color {
-        switch level {
-        case .critical: return Tone.error
-        case .warning: return Tone.warning
-        case .info: return Tone.notice
-        }
-    }
-
-    private func addresses(_ title: String, _ list: [String]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Eyebrow(text: "\(title) \(list.count)")
-            VStack(alignment: .leading, spacing: 4) {
-                ForEach(list.prefix(40), id: \.self) { address in
-                    Text(ReportFormat.short(address, site: report.site)).font(.system(size: 12, design: .monospaced))
+    private func addresses(_ title: String, _ list: [String], linked: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            SectionLabel(text: title, count: list.count)
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(list.prefix(40).enumerated()), id: \.offset) { index, address in
+                    if index > 0 { Tone.hairline.frame(height: 1) }
+                    Text(ReportFormat.short(address, site: report.site))
+                        .font(.system(size: 12, design: .monospaced))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .frame(height: 30)
+                        .textSelection(.enabled)
                 }
-                if list.count > 40 { Text("and \(list.count - 40) more").font(.system(size: 11.5)).foregroundStyle(.secondary) }
+            }
+            if list.count > 40 {
+                Text("And \(list.count - 40) more.").font(.system(size: 11.5)).foregroundStyle(.secondary)
             }
         }
     }

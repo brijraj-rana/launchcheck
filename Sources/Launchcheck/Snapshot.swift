@@ -12,16 +12,21 @@ enum Snapshot {
         defer { try? FileManager.default.removeItem(at: scratch) }
 
         let (before, after) = sample()
-        let shots: [(String, AuditModel.Tab)] = [("overview", .overview), ("issues", .issues), ("pages", .pages), ("changes", .changes)]
+        let shots: [(String, AuditModel.Tab?)] = [("overview", .overview), ("issues", .issues), ("pages", .pages), ("changes", .changes), ("welcome", nil)]
 
         for dark in [false, true] {
             for (name, tab) in shots {
                 let model = AuditModel(history: History(directory: scratch), loadSites: false)
                 model.sites = [after] + others()
                 model.address = "acme-rockets.com"
-                model.present(after, comparedWith: before)
-                model.tab = tab
-                model.expanded = ["page.noindex", "staging.leftovers"]
+                if let tab {
+                    model.present(after, comparedWith: before)
+                    model.tab = tab
+                } else {
+                    model.address = ""
+                }
+                model.selectedIssue = "page.noindex"
+                model.trail = [58, 61, 60, 66, 69, 77]
                 model.selectedPage = "https://www.acme-rockets.com/pricing"
 
                 let window = ContentView(model: model)
@@ -35,15 +40,16 @@ enum Snapshot {
                         }
                         .padding(16)
                     }
-                    .background(dark ? Color(white: 0.118) : Color(white: 0.985))
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.primary.opacity(0.14)))
-                    .shadow(color: .black.opacity(dark ? 0.5 : 0.18), radius: 24, y: 12)
+                    // The shadow belongs to a shape behind the window, so it cannot bleed through the contents.
+                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(.black).shadow(color: .black.opacity(dark ? 0.5 : 0.18), radius: 24, y: 12))
                     .padding(40)
                     .environment(\.isSnapshot, true)
                     .environment(\.colorScheme, dark ? .dark : .light)
 
                 let renderer = ImageRenderer(content: window)
+                renderer.isOpaque = false
                 renderer.scale = scale
                 if let cg = renderer.cgImage,
                    let data = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) {
@@ -89,7 +95,7 @@ enum Snapshot {
                         hasShareTags: share)
         }
         let long = "Rockets, anvils and everything a determined coyote could need, delivered to your canyon by next-day air. Compare plans, see what is in each crate and order today."
-        let pages = [
+        let main = [
             page("/", "Home", "Acme builds rockets and anvils for people in a hurry.", words: 640, depth: 0, inbound: 48),
             page("/pricing", "Pricing for rockets, anvils and giant magnets from Acme Rockets", long, words: 410, indexable: false),
             page("/about", "About Acme Rockets", "Who we are, where we build and why our anvils fall straighter than anyone else's.", words: 520),
@@ -103,6 +109,16 @@ enum Snapshot {
             page("/careers/test-pilot", "Careers: test pilot", "Must be comfortable with heights and sudden stops.", words: 380, depth: 4, inbound: 1),
             page("/legal/privacy", "Privacy policy", "How Acme Rockets handles your data.", words: 2100, depth: 1, inbound: 48),
         ]
+
+        let fillers = ["anvil-classic", "anvil-pro", "jet-boots", "dehydrated-boulders", "earthquake-pills", "tornado-kit", "spring-shoes",
+                       "bird-seed", "tunnel-paint", "invisible-ink", "catapult", "roller-skis", "super-outfit", "iron-carrot", "smoke-screen",
+                       "glue-v2", "lightning-rod", "instant-road"]
+        let posts = ["why-anvils-fall", "canyon-shipping", "a-year-of-rockets", "meet-the-test-pilots", "desert-warehouse", "returns-policy-explained",
+                     "magnets-and-you", "spring-catalogue", "safety-first", "the-new-crate", "skates-recall", "hiring-in-arizona",
+                     "boulder-care", "paint-that-fools", "our-first-launch", "what-we-learned", "catalogue-archive", "press-kit"]
+        let pages = main
+            + fillers.map { page("/products/\($0)", $0.replacingOccurrences(of: "-", with: " ").capitalized, "One of the Acme classics, back in stock.", words: 420, depth: 2, inbound: 4, schema: ["Product"]) }
+            + posts.map { page("/blog/\($0)", $0.replacingOccurrences(of: "-", with: " ").capitalized, "From the Acme workshop notebook.", words: 900, depth: 2, inbound: 2, schema: ["BlogPosting"]) }
 
         let now: [Finding] = [
             Finding("page.noindex", url: at("/pricing"), detail: "robots meta tag"),
@@ -131,6 +147,11 @@ enum Snapshot {
             Finding("security.headers", url: at("/"), detail: "Content-Security-Policy"),
             Finding("security.headers", url: at("/"), detail: "Referrer-Policy"),
             Finding("ai.llms-missing", url: at("/llms.txt")),
+            Finding("images.alt", url: at("/products/jet-boots"), detail: "2 of 6 images"),
+            Finding("description.length", url: at("/blog/returns-policy-explained"), detail: "182 characters"),
+            Finding("images.dimensions", url: at("/products/catapult"), detail: "3 of 6 images"),
+            Finding("content.thin", url: at("/blog/press-kit"), detail: "140 words"),
+            Finding("title.length", url: at("/products/glue-v2"), detail: "7 characters: “Glue V2”"),
         ]
         let after = Report(site: root + "/", date: Date().addingTimeInterval(-40), pagesChecked: 48, pagesFound: 48, linksChecked: 312, seconds: 9.4,
                            findings: now, passed: passed(except: now), pages: pages)

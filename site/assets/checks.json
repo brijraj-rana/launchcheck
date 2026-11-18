@@ -1,674 +1,674 @@
 [
   {
-    "area" : "Indexing",
-    "passed" : "robots.txt lets crawlers in",
-    "why" : "A leftover “Disallow: /” keeps the whole site out of search. Remove it from robots.txt.",
     "title" : "robots.txt blocks every crawler",
     "id" : "robots.blocks-all",
+    "why" : "A leftover “Disallow: /” keeps the whole site out of search. Remove it from robots.txt.",
+    "area" : "Indexing",
+    "passed" : "robots.txt lets crawlers in",
     "severity" : "error"
   },
   {
+    "title" : "robots.txt answers with a server error",
     "why" : "Crawlers treat a server error on robots.txt as “stay out of everything”. It must answer with the file or a plain 404.",
-    "id" : "robots.error",
-    "area" : "Indexing",
-    "passed" : "robots.txt answers properly",
     "severity" : "error",
-    "title" : "robots.txt answers with a server error"
+    "passed" : "robots.txt answers properly",
+    "area" : "Indexing",
+    "id" : "robots.error"
   },
   {
-    "why" : "A noindex tag or header tells search engines to drop the page. It is often left on from staging.",
-    "id" : "page.noindex",
-    "severity" : "error",
     "title" : "Pages are set to noindex",
+    "severity" : "error",
+    "why" : "A noindex tag or header tells search engines to drop the page. It is often left on from staging.",
     "area" : "Indexing",
-    "passed" : "No page is hidden from search engines"
+    "passed" : "No page is hidden from search engines",
+    "id" : "page.noindex"
   },
   {
     "id" : "sitemap.broken",
+    "severity" : "error",
     "passed" : "Every sitemap page loads",
-    "why" : "Search engines are being sent to pages that return an error. Remove them from the sitemap or restore the pages.",
+    "area" : "Indexing",
     "title" : "Sitemap lists pages that do not load",
-    "area" : "Indexing",
-    "severity" : "error"
+    "why" : "Search engines are being sent to pages that return an error. Remove them from the sitemap or restore the pages."
   },
   {
     "severity" : "error",
-    "title" : "Sitemap lists pages on another domain",
-    "id" : "sitemap.offsite",
-    "area" : "Indexing",
+    "passed" : "Sitemap stays on this domain",
     "why" : "A sitemap should only list this site's own pages. Other domains here usually mean it was generated on staging.",
-    "passed" : "Sitemap stays on this domain"
+    "id" : "sitemap.offsite",
+    "title" : "Sitemap lists pages on another domain",
+    "area" : "Indexing"
   },
   {
-    "passed" : "Sitemap files are within the size limit",
-    "severity" : "error",
-    "title" : "A sitemap file lists more than 50,000 pages",
     "why" : "Search engines stop reading a sitemap file at 50,000 addresses. Split it and list the parts in a sitemap index.",
-    "id" : "sitemap.too-big",
-    "area" : "Indexing"
+    "severity" : "error",
+    "passed" : "Sitemap files are within the size limit",
+    "title" : "A sitemap file lists more than 50,000 pages",
+    "area" : "Indexing",
+    "id" : "sitemap.too-big"
   },
   {
     "severity" : "error",
-    "why" : "Links, canonicals or share images that point at a staging address will send visitors and search engines to the wrong site.",
+    "area" : "Indexing",
     "title" : "Pages still point at a staging domain",
-    "id" : "staging.leftovers",
     "passed" : "No links to staging domains",
-    "area" : "Indexing"
+    "why" : "Links, canonicals or share images that point at a staging address will send visitors and search engines to the wrong site.",
+    "id" : "staging.leftovers"
   },
   {
-    "id" : "canonical.offsite",
     "severity" : "error",
     "area" : "Indexing",
     "title" : "Canonical tags point to another domain",
-    "passed" : "Canonical tags stay on this domain",
-    "why" : "A canonical on another domain tells search engines the real page lives there, and this one gets dropped."
+    "why" : "A canonical on another domain tells search engines the real page lives there, and this one gets dropped.",
+    "id" : "canonical.offsite",
+    "passed" : "Canonical tags stay on this domain"
   },
   {
-    "area" : "Content",
-    "severity" : "error",
     "title" : "Pages have no title",
+    "severity" : "error",
     "passed" : "Every page has a title",
+    "why" : "The title is the headline of a search result. Without one, search engines make something up.",
     "id" : "title.missing",
-    "why" : "The title is the headline of a search result. Without one, search engines make something up."
+    "area" : "Content"
   },
   {
-    "severity" : "error",
-    "area" : "Links",
-    "why" : "These links go to pages on this site that do not load.",
-    "id" : "links.internal",
     "passed" : "No broken links between pages",
+    "why" : "These links go to pages on this site that do not load.",
+    "severity" : "error",
+    "id" : "links.internal",
+    "area" : "Links",
     "title" : "Broken links between pages"
   },
   {
-    "title" : "Images do not load",
     "passed" : "Every image loads",
-    "area" : "Images",
+    "severity" : "error",
     "why" : "These image addresses return an error, so visitors see a gap or a broken icon.",
-    "id" : "images.broken",
-    "severity" : "error"
+    "title" : "Images do not load",
+    "area" : "Images",
+    "id" : "images.broken"
   },
   {
-    "area" : "Sharing",
-    "id" : "social.image.broken",
     "passed" : "Share images load",
     "why" : "The og:image address returns an error, so shared links will show no picture.",
+    "id" : "social.image.broken",
     "severity" : "error",
+    "area" : "Sharing",
     "title" : "Share images do not load"
   },
   {
     "severity" : "warning",
-    "area" : "Indexing",
-    "id" : "sitemap.missing",
-    "passed" : "Sitemap found",
     "why" : "A sitemap tells search engines which pages exist. Publish one at /sitemap.xml and name it in robots.txt.",
-    "title" : "No sitemap found"
+    "passed" : "Sitemap found",
+    "id" : "sitemap.missing",
+    "title" : "No sitemap found",
+    "area" : "Indexing"
   },
   {
     "id" : "sitemap.redirects",
-    "passed" : "No redirects in the sitemap",
     "severity" : "warning",
-    "area" : "Indexing",
+    "why" : "List the final address of each page, not one that redirects to it.",
     "title" : "Sitemap lists pages that redirect",
-    "why" : "List the final address of each page, not one that redirects to it."
+    "passed" : "No redirects in the sitemap",
+    "area" : "Indexing"
   },
   {
+    "area" : "Indexing",
+    "title" : "Sitemap lists pages that robots.txt blocks",
+    "passed" : "robots.txt blocks nothing in the sitemap",
     "why" : "The sitemap invites crawlers to pages robots.txt turns them away from. Decide which one is right.",
     "id" : "sitemap.blocked",
-    "passed" : "robots.txt blocks nothing in the sitemap",
-    "area" : "Indexing",
-    "severity" : "warning",
-    "title" : "Sitemap lists pages that robots.txt blocks"
+    "severity" : "warning"
   },
   {
-    "severity" : "warning",
+    "id" : "sitemap.noncanonical",
+    "area" : "Indexing",
     "title" : "Sitemap lists pages whose canonical is another page",
     "why" : "A sitemap should list the canonical address of each page. These pages say the real one is elsewhere.",
-    "id" : "sitemap.noncanonical",
     "passed" : "Every sitemap page is its own canonical",
-    "area" : "Indexing"
+    "severity" : "warning"
   },
   {
     "why" : "These pages are in the sitemap, but no page that was read links to them. Visitors cannot reach them and search engines give them little weight.",
     "title" : "Pages that nothing links to",
-    "area" : "Links",
-    "severity" : "warning",
     "id" : "page.orphan",
+    "severity" : "warning",
+    "area" : "Links",
     "passed" : "Every page is linked from another page"
   },
   {
-    "title" : "Pages are empty until JavaScript runs",
     "passed" : "Pages carry their content in the HTML",
-    "area" : "Indexing",
+    "severity" : "warning",
     "id" : "content.js-shell",
-    "severity" : "warning",
-    "why" : "The HTML the server sends has almost no text, only a mount point for a script. Crawlers and AI assistants that do not run JavaScript see a blank page."
+    "area" : "Indexing",
+    "why" : "The HTML the server sends has almost no text, only a mount point for a script. Crawlers and AI assistants that do not run JavaScript see a blank page.",
+    "title" : "Pages are empty until JavaScript runs"
   },
   {
-    "severity" : "warning",
+    "area" : "Content",
+    "title" : "Pages repeat a tag that should appear once",
     "id" : "head.duplicates",
-    "area" : "Content",
-    "passed" : "No repeated title, description or canonical tags",
-    "why" : "With two titles, descriptions or canonicals in one page, it is a toss-up which one a search engine reads.",
-    "title" : "Pages repeat a tag that should appear once"
-  },
-  {
     "severity" : "warning",
-    "area" : "Content",
-    "why" : "Pages with the same title compete with each other and look identical in search results.",
-    "title" : "Pages share the same title",
-    "passed" : "Every title is unique",
-    "id" : "title.duplicate"
+    "passed" : "No repeated title, description or canonical tags",
+    "why" : "With two titles, descriptions or canonicals in one page, it is a toss-up which one a search engine reads."
   },
   {
-    "id" : "description.missing",
+    "passed" : "Every title is unique",
+    "id" : "title.duplicate",
+    "why" : "Pages with the same title compete with each other and look identical in search results.",
+    "severity" : "warning",
+    "title" : "Pages share the same title",
+    "area" : "Content"
+  },
+  {
     "passed" : "Every page has a meta description",
     "why" : "The description is the text under the title in a search result. Without one, search engines pick a snippet themselves.",
+    "id" : "description.missing",
     "title" : "Pages have no meta description",
     "severity" : "warning",
     "area" : "Content"
   },
   {
+    "passed" : "Every meta description is unique",
     "why" : "A description copied across pages says nothing about any one of them.",
     "id" : "description.duplicate",
-    "passed" : "Every meta description is unique",
-    "title" : "Pages share the same meta description",
+    "area" : "Content",
     "severity" : "warning",
-    "area" : "Content"
+    "title" : "Pages share the same meta description"
   },
   {
-    "why" : "A canonical tag names the one true address of a page, so tracking parameters and duplicates do not split its ranking.",
-    "area" : "Indexing",
-    "title" : "Pages have no canonical tag",
-    "severity" : "warning",
     "passed" : "Every page has a canonical tag",
-    "id" : "canonical.missing"
+    "area" : "Indexing",
+    "severity" : "warning",
+    "title" : "Pages have no canonical tag",
+    "id" : "canonical.missing",
+    "why" : "A canonical tag names the one true address of a page, so tracking parameters and duplicates do not split its ranking."
   },
   {
-    "id" : "h1.missing",
-    "area" : "Content",
+    "severity" : "warning",
     "title" : "Pages have no H1",
-    "severity" : "warning",
-    "passed" : "Every page has an H1",
-    "why" : "The H1 is the page's main heading, for readers and search engines alike."
+    "area" : "Content",
+    "id" : "h1.missing",
+    "why" : "The H1 is the page's main heading, for readers and search engines alike.",
+    "passed" : "Every page has an H1"
   },
   {
-    "passed" : "Every page declares a character set",
-    "title" : "Pages do not declare a character set",
     "why" : "Without a charset, browsers guess, and accented letters and symbols can turn into gibberish.",
+    "id" : "charset.missing",
+    "passed" : "Every page declares a character set",
     "severity" : "warning",
-    "area" : "Content",
-    "id" : "charset.missing"
+    "title" : "Pages do not declare a character set",
+    "area" : "Content"
   },
   {
     "id" : "page.nofollow",
+    "area" : "Indexing",
+    "severity" : "warning",
     "passed" : "No page is set to nofollow",
     "why" : "A page-level nofollow stops search engines passing through to the pages it links to.",
-    "area" : "Indexing",
-    "title" : "Pages tell crawlers not to follow their links",
+    "title" : "Pages tell crawlers not to follow their links"
+  },
+  {
+    "area" : "Links",
+    "id" : "meta.refresh",
+    "title" : "Pages redirect with a meta refresh",
+    "passed" : "No meta refresh redirects",
+    "why" : "A meta refresh is a slow, unreliable redirect. Use a server-side 301 instead.",
     "severity" : "warning"
   },
   {
-    "severity" : "warning",
-    "why" : "A meta refresh is a slow, unreliable redirect. Use a server-side 301 instead.",
-    "area" : "Links",
-    "title" : "Pages redirect with a meta refresh",
-    "id" : "meta.refresh",
-    "passed" : "No meta refresh redirects"
-  },
-  {
-    "title" : "Redirects that pass through more than one hop",
-    "severity" : "warning",
     "passed" : "No redirect chains",
-    "area" : "Links",
     "why" : "Each extra hop slows the visitor down and wastes crawl budget. Point the first address straight at the last.",
-    "id" : "redirect.chain"
+    "id" : "redirect.chain",
+    "severity" : "warning",
+    "area" : "Links",
+    "title" : "Redirects that pass through more than one hop"
   },
   {
-    "why" : "A link with no words and no image description tells neither a screen reader nor a search engine where it leads.",
     "severity" : "warning",
     "area" : "Links",
     "title" : "Links have no text",
-    "passed" : "Every link says where it goes",
-    "id" : "links.empty"
+    "id" : "links.empty",
+    "why" : "A link with no words and no image description tells neither a screen reader nor a search engine where it leads.",
+    "passed" : "Every link says where it goes"
   },
   {
-    "id" : "social.image.missing",
-    "passed" : "Every page has a share image",
     "why" : "Without an og:image, links shared on social apps and in chats show a blank card.",
-    "severity" : "warning",
     "area" : "Sharing",
-    "title" : "Pages have no share image"
+    "id" : "social.image.missing",
+    "severity" : "warning",
+    "title" : "Pages have no share image",
+    "passed" : "Every page has a share image"
   },
   {
+    "title" : "Images have no alt text",
     "severity" : "warning",
+    "area" : "Images",
     "passed" : "Every image has an alt attribute",
     "why" : "Alt text is what screen readers speak and what search engines read. Decorative images should have an empty alt, not a missing one.",
-    "id" : "images.alt",
-    "area" : "Images",
-    "title" : "Images have no alt text"
+    "id" : "images.alt"
   },
   {
-    "why" : "Images this large slow the page noticeably, most of all on phones. Resize or recompress them.",
-    "area" : "Images",
-    "id" : "images.heavy",
     "passed" : "No image is over 500 KB",
+    "why" : "Images this large slow the page noticeably, most of all on phones. Resize or recompress them.",
     "severity" : "warning",
-    "title" : "Images over 500 KB"
+    "title" : "Images over 500 KB",
+    "area" : "Images",
+    "id" : "images.heavy"
   },
   {
-    "severity" : "warning",
     "title" : "Pages have no viewport tag",
     "passed" : "Every page has a viewport tag",
-    "id" : "viewport.missing",
     "why" : "Without a viewport tag the page renders zoomed out on phones, and Google indexes the mobile version.",
+    "id" : "viewport.missing",
+    "severity" : "warning",
     "area" : "Content"
   },
   {
-    "why" : "These links go to pages on other sites that no longer exist.",
-    "area" : "Links",
-    "title" : "Broken links to other sites",
-    "id" : "links.external",
     "passed" : "No broken links to other sites",
-    "severity" : "warning"
-  },
-  {
-    "id" : "mixed.content",
-    "why" : "Browsers block or flag http files on an https page.",
+    "area" : "Links",
+    "id" : "links.external",
+    "title" : "Broken links to other sites",
     "severity" : "warning",
-    "area" : "Security",
-    "passed" : "Nothing loads over plain http",
-    "title" : "Pages load files over plain http"
+    "why" : "These links go to pages on other sites that no longer exist."
   },
   {
+    "title" : "Pages load files over plain http",
+    "area" : "Security",
+    "severity" : "warning",
+    "passed" : "Nothing loads over plain http",
+    "why" : "Browsers block or flag http files on an https page.",
+    "id" : "mixed.content"
+  },
+  {
+    "area" : "Content",
+    "why" : "“Lorem ipsum” is still on the page.",
+    "title" : "Placeholder text left in",
     "passed" : "No placeholder text",
     "severity" : "warning",
-    "title" : "Placeholder text left in",
-    "why" : "“Lorem ipsum” is still on the page.",
-    "area" : "Content",
     "id" : "placeholder.text"
   },
   {
-    "passed" : "http:// redirects to https://",
     "title" : "http:// does not redirect to https://",
+    "severity" : "warning",
     "why" : "Visitors and links using the old http address should land on the secure one.",
+    "passed" : "http:// redirects to https://",
     "id" : "https.redirect",
+    "area" : "Security"
+  },
+  {
+    "why" : "This header tells browsers to always use https for the site, closing the gap where a first visit can be intercepted.",
+    "title" : "No Strict-Transport-Security header",
+    "passed" : "Strict-Transport-Security is set",
+    "id" : "security.hsts",
     "severity" : "warning",
     "area" : "Security"
   },
   {
-    "area" : "Security",
-    "title" : "No Strict-Transport-Security header",
-    "why" : "This header tells browsers to always use https for the site, closing the gap where a first visit can be intercepted.",
-    "id" : "security.hsts",
     "severity" : "warning",
-    "passed" : "Strict-Transport-Security is set"
-  },
-  {
     "id" : "host.duplicate",
-    "area" : "Indexing",
-    "title" : "The site answers on both www and non-www",
-    "severity" : "warning",
     "passed" : "www and non-www resolve to one address",
-    "why" : "Two addresses serving the same pages split links and ranking between them. Redirect one to the other."
+    "why" : "Two addresses serving the same pages split links and ranking between them. Redirect one to the other.",
+    "area" : "Indexing",
+    "title" : "The site answers on both www and non-www"
   },
   {
+    "why" : "An address that does not exist should say so with a 404 status, or search engines index error pages as real content.",
     "id" : "notfound.soft",
+    "area" : "Indexing",
     "severity" : "warning",
     "title" : "Missing pages do not return a 404",
-    "passed" : "Missing pages return a 404",
-    "why" : "An address that does not exist should say so with a 404 status, or search engines index error pages as real content.",
-    "area" : "Indexing"
+    "passed" : "Missing pages return a 404"
   },
   {
-    "why" : "Googlebot reads only the first 2 MB of a page's HTML. Anything after that, including structured data, is not indexed.",
-    "passed" : "No page is over 2 MB of HTML",
     "id" : "page.too-large",
+    "severity" : "warning",
+    "passed" : "No page is over 2 MB of HTML",
     "title" : "Pages over 2 MB of HTML",
     "area" : "Performance",
-    "severity" : "warning"
+    "why" : "Googlebot reads only the first 2 MB of a page's HTML. Anything after that, including structured data, is not indexed."
   },
   {
     "title" : "Pages are sent uncompressed",
-    "severity" : "warning",
-    "area" : "Performance",
     "passed" : "Pages are sent compressed",
     "why" : "Turning on gzip or Brotli on the server typically cuts HTML to a quarter of its size.",
-    "id" : "perf.uncompressed"
+    "area" : "Performance",
+    "id" : "perf.uncompressed",
+    "severity" : "warning"
   },
   {
+    "passed" : "Structured data parses",
+    "title" : "Structured data that cannot be read",
+    "why" : "A JSON-LD block with a syntax error is ignored entirely, along with any rich result it would have earned.",
     "severity" : "warning",
     "area" : "Structured data",
-    "passed" : "Structured data parses",
-    "why" : "A JSON-LD block with a syntax error is ignored entirely, along with any rich result it would have earned.",
-    "title" : "Structured data that cannot be read",
     "id" : "schema.invalid"
   },
   {
-    "passed" : "Structured data has its required properties",
     "why" : "Without these properties the markup does not qualify for the rich result it describes.",
-    "title" : "Structured data is missing required properties",
-    "area" : "Structured data",
     "severity" : "warning",
-    "id" : "schema.incomplete"
+    "id" : "schema.incomplete",
+    "area" : "Structured data",
+    "title" : "Structured data is missing required properties",
+    "passed" : "Structured data has its required properties"
   },
   {
+    "passed" : "No placeholders in structured data",
+    "why" : "Values like “[Business Name]” were never filled in.",
     "id" : "schema.placeholder",
     "severity" : "warning",
-    "why" : "Values like “[Business Name]” were never filled in.",
-    "passed" : "No placeholders in structured data",
     "area" : "Structured data",
     "title" : "Structured data still has template placeholders"
   },
   {
-    "passed" : "AI search crawlers are allowed",
-    "why" : "These crawlers fetch pages to answer questions in ChatGPT, Claude and Perplexity and to cite sources. Blocking them keeps the site out of those answers. Crawlers that only gather training data are a separate choice and are not flagged.",
-    "severity" : "warning",
-    "id" : "ai.search-blocked",
     "area" : "AI search",
-    "title" : "robots.txt blocks AI search crawlers"
+    "passed" : "AI search crawlers are allowed",
+    "title" : "robots.txt blocks AI search crawlers",
+    "why" : "These crawlers fetch pages to answer questions in ChatGPT, Claude and Perplexity and to cite sources. Blocking them keeps the site out of those answers. Crawlers that only gather training data are a separate choice and are not flagged.",
+    "id" : "ai.search-blocked",
+    "severity" : "warning"
   },
   {
+    "title" : "llms.txt is not in the expected format",
     "passed" : "llms.txt is well formed",
     "area" : "AI search",
-    "title" : "llms.txt is not in the expected format",
     "id" : "ai.llms-invalid",
     "why" : "An llms.txt should open with a “# Title” line and list pages as Markdown links.",
     "severity" : "warning"
   },
   {
+    "severity" : "warning",
     "id" : "hreflang.invalid",
-    "area" : "International",
     "title" : "Hreflang tags use codes that do not exist",
-    "why" : "The language must be a two-letter ISO 639-1 code and the region a two-letter ISO 3166-1 code, as in en-GB. Invalid tags are ignored.",
     "passed" : "Hreflang codes are valid",
-    "severity" : "warning"
+    "why" : "The language must be a two-letter ISO 639-1 code and the region a two-letter ISO 3166-1 code, as in en-GB. Invalid tags are ignored.",
+    "area" : "International"
   },
   {
-    "area" : "International",
-    "title" : "Hreflang sets do not include the page itself",
     "passed" : "Every hreflang set includes the page itself",
+    "area" : "International",
     "why" : "Each page must list itself among its language versions, or the whole set can be disregarded.",
-    "id" : "hreflang.self",
-    "severity" : "warning"
+    "title" : "Hreflang sets do not include the page itself",
+    "severity" : "warning",
+    "id" : "hreflang.self"
   },
   {
     "area" : "International",
-    "title" : "Hreflang links are not returned",
-    "passed" : "Hreflang links point both ways",
-    "why" : "If page A names B as its translation, B must name A back. One-way links are ignored.",
     "id" : "hreflang.return",
-    "severity" : "warning"
+    "severity" : "warning",
+    "passed" : "Hreflang links point both ways",
+    "title" : "Hreflang links are not returned",
+    "why" : "If page A names B as its translation, B must name A back. One-way links are ignored."
   },
   {
-    "severity" : "notice",
-    "title" : "No robots.txt",
     "id" : "robots.missing",
+    "area" : "Indexing",
+    "title" : "No robots.txt",
+    "passed" : "robots.txt found",
     "why" : "Not required, but it is where crawlers look first and where the sitemap is announced.",
-    "area" : "Indexing",
-    "passed" : "robots.txt found"
-  },
-  {
-    "severity" : "notice",
-    "title" : "robots.txt does not name the sitemap",
-    "area" : "Indexing",
-    "id" : "sitemap.undeclared",
-    "passed" : "robots.txt names the sitemap",
-    "why" : "A “Sitemap:” line in robots.txt lets every crawler find it without being told."
-  },
-  {
-    "id" : "sitemap.lastmod",
-    "severity" : "notice",
-    "area" : "Indexing",
-    "title" : "Every sitemap entry has the same last-modified date",
-    "passed" : "Sitemap dates vary by page",
-    "why" : "Identical dates mean the sitemap stamps the build time on everything, so search engines learn to ignore them."
-  },
-  {
-    "area" : "Indexing",
-    "severity" : "notice",
-    "title" : "Sitemap lists pages set to noindex",
-    "id" : "sitemap.noindex",
-    "why" : "A sitemap asks for pages to be indexed; noindex asks for the opposite. Remove one or the other.",
-    "passed" : "No noindex pages in the sitemap"
-  },
-  {
-    "id" : "sitemap.incomplete",
-    "title" : "Linked pages are missing from the sitemap",
-    "area" : "Indexing",
-    "passed" : "Linked pages are all in the sitemap",
-    "severity" : "notice",
-    "why" : "These pages are linked from the site and load fine, but the sitemap does not mention them."
-  },
-  {
-    "passed" : "Every page is within three clicks of home",
-    "area" : "Links",
-    "why" : "The further a page is from the home page, the less often it is crawled and the less weight it carries.",
-    "id" : "page.deep",
-    "title" : "Pages more than three clicks from the home page",
     "severity" : "notice"
   },
   {
+    "title" : "robots.txt does not name the sitemap",
+    "passed" : "robots.txt names the sitemap",
+    "why" : "A “Sitemap:” line in robots.txt lets every crawler find it without being told.",
+    "area" : "Indexing",
+    "id" : "sitemap.undeclared",
+    "severity" : "notice"
+  },
+  {
+    "severity" : "notice",
+    "area" : "Indexing",
+    "id" : "sitemap.lastmod",
+    "passed" : "Sitemap dates vary by page",
+    "title" : "Every sitemap entry has the same last-modified date",
+    "why" : "Identical dates mean the sitemap stamps the build time on everything, so search engines learn to ignore them."
+  },
+  {
+    "why" : "A sitemap asks for pages to be indexed; noindex asks for the opposite. Remove one or the other.",
+    "id" : "sitemap.noindex",
+    "title" : "Sitemap lists pages set to noindex",
+    "area" : "Indexing",
+    "severity" : "notice",
+    "passed" : "No noindex pages in the sitemap"
+  },
+  {
+    "area" : "Indexing",
+    "title" : "Linked pages are missing from the sitemap",
+    "why" : "These pages are linked from the site and load fine, but the sitemap does not mention them.",
+    "passed" : "Linked pages are all in the sitemap",
+    "severity" : "notice",
+    "id" : "sitemap.incomplete"
+  },
+  {
+    "area" : "Links",
+    "id" : "page.deep",
+    "severity" : "notice",
+    "title" : "Pages more than three clicks from the home page",
+    "passed" : "Every page is within three clicks of home",
+    "why" : "The further a page is from the home page, the less often it is crawled and the less weight it carries."
+  },
+  {
+    "passed" : "Links between pages go straight there",
     "why" : "Link to the final address. It saves visitors a round trip and keeps the link's full value.",
+    "title" : "Links between pages go through a redirect",
     "id" : "links.redirect",
     "severity" : "notice",
-    "title" : "Links between pages go through a redirect",
-    "passed" : "Links between pages go straight there",
     "area" : "Links"
   },
   {
-    "passed" : "Redirects are permanent",
-    "why" : "A 302 or 307 says the move is temporary, so search engines keep the old address. Use a 301 for a move that is meant to last.",
-    "severity" : "notice",
-    "title" : "Redirects marked as temporary",
-    "id" : "redirect.temporary",
-    "area" : "Links"
-  },
-  {
-    "id" : "links.generic",
     "severity" : "notice",
     "area" : "Links",
+    "why" : "A 302 or 307 says the move is temporary, so search engines keep the old address. Use a 301 for a move that is meant to last.",
+    "id" : "redirect.temporary",
+    "passed" : "Redirects are permanent",
+    "title" : "Redirects marked as temporary"
+  },
+  {
+    "area" : "Links",
+    "id" : "links.generic",
+    "passed" : "Link text describes its destination",
+    "severity" : "notice",
     "title" : "Links that just say “click here”",
-    "why" : "Words like “click here” or “read more” waste the one place a link can say what it leads to.",
-    "passed" : "Link text describes its destination"
+    "why" : "Words like “click here” or “read more” waste the one place a link can say what it leads to."
   },
   {
-    "area" : "Security",
-    "id" : "links.insecure",
-    "severity" : "notice",
-    "title" : "Links to http:// addresses",
     "passed" : "No links to http:// addresses",
-    "why" : "These links leave a secure page for an insecure address. Most destinations have an https version."
+    "why" : "These links leave a secure page for an insecure address. Most destinations have an https version.",
+    "title" : "Links to http:// addresses",
+    "severity" : "notice",
+    "area" : "Security",
+    "id" : "links.insecure"
   },
   {
-    "severity" : "notice",
-    "id" : "url.hygiene",
     "title" : "Addresses that are long or untidy",
-    "passed" : "Addresses are short and tidy",
     "why" : "Capital letters, underscores, doubled slashes and very long addresses are harder to share and easier to mistype.",
-    "area" : "Indexing"
+    "id" : "url.hygiene",
+    "area" : "Indexing",
+    "passed" : "Addresses are short and tidy",
+    "severity" : "notice"
   },
   {
+    "why" : "Search results show roughly 60 characters. Longer titles get cut off; very short ones waste the space.",
     "id" : "title.length",
-    "passed" : "Titles are a sensible length",
-    "severity" : "notice",
     "area" : "Content",
     "title" : "Titles are very short or very long",
-    "why" : "Search results show roughly 60 characters. Longer titles get cut off; very short ones waste the space."
+    "severity" : "notice",
+    "passed" : "Titles are a sensible length"
   },
   {
-    "title" : "Meta descriptions are very short or very long",
-    "severity" : "notice",
     "passed" : "Meta descriptions are a sensible length",
     "why" : "Search results show roughly 160 characters. Aim for 50 to 160.",
     "id" : "description.length",
+    "title" : "Meta descriptions are very short or very long",
+    "severity" : "notice",
     "area" : "Content"
   },
   {
-    "title" : "Canonical tags point to a different page",
+    "id" : "canonical.mismatch",
     "area" : "Indexing",
-    "passed" : "Canonical tags match their pages",
-    "why" : "This can be deliberate. If it is not, the page is telling search engines to index a different one instead.",
     "severity" : "notice",
-    "id" : "canonical.mismatch"
+    "why" : "This can be deliberate. If it is not, the page is telling search engines to index a different one instead.",
+    "title" : "Canonical tags point to a different page",
+    "passed" : "Canonical tags match their pages"
   },
   {
     "severity" : "notice",
     "area" : "Content",
     "title" : "Pages have more than one H1",
     "passed" : "No page has more than one H1",
-    "why" : "One main heading per page keeps the outline clear.",
-    "id" : "h1.multiple"
+    "id" : "h1.multiple",
+    "why" : "One main heading per page keeps the outline clear."
   },
   {
-    "passed" : "Headings step down one level at a time",
-    "title" : "Headings skip a level",
-    "why" : "An H2 followed by an H4 leaves a hole in the outline that screen readers and AI summaries rely on.",
     "id" : "heading.skip",
-    "severity" : "notice",
-    "area" : "Content"
-  },
-  {
-    "title" : "Pages with under 200 words",
-    "why" : "There is little here for a search engine to rank. Fine for a contact page, a problem for a page meant to be found.",
-    "id" : "content.thin",
-    "severity" : "notice",
+    "why" : "An H2 followed by an H4 leaves a hole in the outline that screen readers and AI summaries rely on.",
     "area" : "Content",
-    "passed" : "Every page has at least 200 words"
-  },
-  {
-    "id" : "doctype.missing",
-    "severity" : "notice",
-    "title" : "Pages have no doctype",
-    "passed" : "Every page has a doctype",
-    "why" : "Without <!doctype html> browsers fall back to a legacy rendering mode.",
-    "area" : "Content"
-  },
-  {
-    "why" : "og:title and og:description control the text on a shared link.",
-    "area" : "Sharing",
-    "passed" : "Every page has a share title and description",
-    "id" : "social.text.missing",
-    "title" : "Pages are missing share titles or descriptions",
+    "title" : "Headings skip a level",
+    "passed" : "Headings step down one level at a time",
     "severity" : "notice"
   },
   {
-    "title" : "Pages have no Twitter card tag",
-    "id" : "social.twitter.missing",
+    "passed" : "Every page has at least 200 words",
+    "area" : "Content",
+    "title" : "Pages with under 200 words",
+    "severity" : "notice",
+    "why" : "There is little here for a search engine to rank. Fine for a contact page, a problem for a page meant to be found.",
+    "id" : "content.thin"
+  },
+  {
+    "area" : "Content",
+    "why" : "Without <!doctype html> browsers fall back to a legacy rendering mode.",
+    "passed" : "Every page has a doctype",
+    "id" : "doctype.missing",
+    "title" : "Pages have no doctype",
+    "severity" : "notice"
+  },
+  {
+    "area" : "Sharing",
+    "why" : "og:title and og:description control the text on a shared link.",
+    "title" : "Pages are missing share titles or descriptions",
+    "passed" : "Every page has a share title and description",
+    "severity" : "notice",
+    "id" : "social.text.missing"
+  },
+  {
     "passed" : "Every page has a Twitter card tag",
     "why" : "A twitter:card tag chooses between a small thumbnail and a large image when the link is posted on X.",
+    "title" : "Pages have no Twitter card tag",
+    "id" : "social.twitter.missing",
     "severity" : "notice",
     "area" : "Sharing"
   },
   {
-    "why" : "Shares and likes are counted against og:url. If it differs from the canonical they are credited to a different address.",
-    "severity" : "notice",
-    "area" : "Sharing",
     "title" : "og:url differs from the canonical",
-    "id" : "social.url.mismatch",
-    "passed" : "og:url matches the canonical"
+    "area" : "Sharing",
+    "severity" : "notice",
+    "passed" : "og:url matches the canonical",
+    "why" : "Shares and likes are counted against og:url. If it differs from the canonical they are credited to a different address.",
+    "id" : "social.url.mismatch"
   },
   {
+    "id" : "images.large",
+    "why" : "Worth a second look: most content images can be well under 200 KB in a modern format.",
+    "severity" : "notice",
     "area" : "Images",
     "passed" : "No image is over 200 KB",
-    "why" : "Worth a second look: most content images can be well under 200 KB in a modern format.",
-    "title" : "Images over 200 KB",
-    "id" : "images.large",
+    "title" : "Images over 200 KB"
+  },
+  {
+    "title" : "Images have no width and height",
+    "id" : "images.dimensions",
+    "passed" : "Every image has a width and height",
+    "why" : "Without both attributes the browser cannot reserve space, so the page jumps as images arrive.",
+    "area" : "Images",
     "severity" : "notice"
   },
   {
-    "severity" : "notice",
-    "passed" : "Every image has a width and height",
-    "title" : "Images have no width and height",
-    "why" : "Without both attributes the browser cannot reserve space, so the page jumps as images arrive.",
     "area" : "Images",
-    "id" : "images.dimensions"
-  },
-  {
-    "severity" : "notice",
-    "title" : "Alt text that says nothing",
-    "area" : "Images",
-    "passed" : "Alt text is descriptive",
     "why" : "A filename, a single generic word or a paragraph is not a description. Aim for a short phrase saying what the image shows.",
-    "id" : "images.alt-quality"
+    "passed" : "Alt text is descriptive",
+    "title" : "Alt text that says nothing",
+    "id" : "images.alt-quality",
+    "severity" : "notice"
   },
   {
-    "title" : "The first image on the page is lazy-loaded",
-    "severity" : "notice",
-    "passed" : "The first image loads eagerly",
     "area" : "Images",
+    "id" : "images.first-lazy",
+    "severity" : "notice",
     "why" : "Lazy-loading the first image usually delays the largest thing on screen. Keep lazy loading for images further down.",
-    "id" : "images.first-lazy"
+    "title" : "The first image on the page is lazy-loaded",
+    "passed" : "The first image loads eagerly"
   },
   {
-    "passed" : "Pages start answering within a second",
-    "why" : "The server took over a second to begin its reply, measured from this Mac. Everything else on the page waits on that.",
-    "title" : "Pages are slow to start answering",
     "id" : "perf.slow",
+    "title" : "Pages are slow to start answering",
+    "passed" : "Pages start answering within a second",
+    "area" : "Performance",
     "severity" : "notice",
-    "area" : "Performance"
+    "why" : "The server took over a second to begin its reply, measured from this Mac. Everything else on the page waits on that."
   },
   {
     "why" : "A script in the head without async or defer stops the page drawing until it has downloaded and run.",
-    "severity" : "notice",
-    "id" : "perf.blocking-scripts",
-    "area" : "Performance",
     "title" : "Scripts in the head hold up the page",
+    "severity" : "notice",
+    "area" : "Performance",
+    "id" : "perf.blocking-scripts",
     "passed" : "No render-blocking scripts in the head"
   },
   {
-    "severity" : "notice",
-    "passed" : "Recommended security headers are set",
     "why" : "Not a ranking factor, but each of these closes off a common attack on visitors.",
     "title" : "Recommended security headers are missing",
+    "severity" : "notice",
+    "passed" : "Recommended security headers are set",
     "id" : "security.headers",
     "area" : "Security"
   },
   {
-    "severity" : "notice",
-    "area" : "Structured data",
-    "passed" : "The site has structured data",
-    "why" : "Schema.org markup tells search engines what a page is (an organisation, an article, a product) and unlocks rich results.",
     "title" : "No structured data on the site",
-    "id" : "schema.missing"
+    "passed" : "The site has structured data",
+    "id" : "schema.missing",
+    "why" : "Schema.org markup tells search engines what a page is (an organisation, an article, a product) and unlocks rich results.",
+    "area" : "Structured data",
+    "severity" : "notice"
   },
   {
-    "title" : "Structured data types that no longer earn a rich result",
-    "severity" : "notice",
     "area" : "Structured data",
     "passed" : "No retired structured data types",
     "why" : "Search engines have stopped showing rich results for these types. They do no harm, but they no longer do any good.",
+    "severity" : "notice",
+    "title" : "Structured data types that no longer earn a rich result",
     "id" : "schema.deprecated"
   },
   {
-    "area" : "AI search",
-    "id" : "ai.llms-missing",
-    "severity" : "notice",
     "passed" : "llms.txt found",
     "why" : "An optional Markdown file at /llms.txt that points AI assistants at the pages that matter. Search engines ignore it.",
-    "title" : "No llms.txt"
+    "severity" : "notice",
+    "area" : "AI search",
+    "title" : "No llms.txt",
+    "id" : "ai.llms-missing"
   },
   {
-    "passed" : "Hreflang sets have an x-default",
-    "severity" : "notice",
-    "area" : "International",
     "id" : "hreflang.x-default",
-    "why" : "x-default names the page for visitors whose language is not listed.",
-    "title" : "Hreflang sets have no x-default"
+    "severity" : "notice",
+    "title" : "Hreflang sets have no x-default",
+    "passed" : "Hreflang sets have an x-default",
+    "area" : "International",
+    "why" : "x-default names the page for visitors whose language is not listed."
   },
   {
     "id" : "lang.missing",
-    "area" : "Content",
-    "passed" : "Every page declares a language",
     "severity" : "notice",
     "title" : "Pages do not declare a language",
-    "why" : "The lang attribute on <html> helps screen readers and translation tools."
+    "why" : "The lang attribute on <html> helps screen readers and translation tools.",
+    "area" : "Content",
+    "passed" : "Every page declares a language"
   },
   {
-    "id" : "favicon.missing",
     "why" : "The small icon in browser tabs and some search results.",
+    "id" : "favicon.missing",
     "area" : "Content",
-    "title" : "No favicon",
+    "passed" : "Favicon found",
     "severity" : "notice",
-    "passed" : "Favicon found"
+    "title" : "No favicon"
   }
 ]

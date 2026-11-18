@@ -1,3 +1,4 @@
+import AppKit
 import LaunchcheckCore
 import SwiftUI
 
@@ -5,22 +6,25 @@ import SwiftUI
 
 struct ContentView: View {
     @ObservedObject var model: AuditModel
+    @Environment(\.isSnapshot) private var isSnapshot
 
     var body: some View {
         HStack(spacing: 0) {
             Sidebar(model: model)
-                .frame(width: 212)
+                .frame(width: 216)
             Tone.hairline.frame(width: 1)
             VStack(spacing: 0) {
                 AddressBar(model: model)
-                    .padding(.horizontal, 24)
-                    .padding(.top, 14)
-                    .padding(.bottom, 14)
-                Tone.hairline.frame(height: 1)
+                    .padding(.leading, 20)
+                    .padding(.trailing, 16)
+                    .frame(height: 52)
+                    .overlay(alignment: .bottom) { RunLine(model: model) }
                 main
             }
+            .background(Tone.surface)
         }
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(Tone.sidebar)
+        .onAppear { if !isSnapshot { ArrowKeys.install(for: model) } }
     }
 
     @ViewBuilder private var main: some View {
@@ -28,7 +32,7 @@ struct ContentView: View {
         case .running:
             RunningView(model: model)
         case .failed(let message):
-            FailedView(message: message)
+            FailedView(message: message) { model.start() }
         case .idle, .done:
             if let report = model.report {
                 ReportShell(model: model, report: report)
@@ -39,6 +43,49 @@ struct ContentView: View {
     }
 }
 
+/// Up and down move through the list on screen, unless a text field is being typed in.
+@MainActor
+enum ArrowKeys {
+    private static var installed = false
+
+    static func install(for model: AuditModel) {
+        guard !installed else { return }
+        installed = true
+        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak model] event in
+            guard let model, event.modifierFlags.intersection([.command, .option, .control]).isEmpty,
+                  !(event.window?.firstResponder is NSText), model.report != nil, !model.isRunning,
+                  model.tab == .issues || model.tab == .pages else { return event }
+            switch event.keyCode {
+            case 125: model.move(by: 1)
+            case 126: model.move(by: -1)
+            default: return event
+            }
+            return nil
+        }
+    }
+}
+
+/// The hairline under the address bar, which fills as a check runs.
+struct RunLine: View {
+    @ObservedObject var model: AuditModel
+
+    var body: some View {
+        GeometryReader { geometry in
+            let progress = model.progress
+            let fraction = progress.total > 0 ? min(1, CGFloat(progress.done) / CGFloat(progress.total)) : 0.03
+            ZStack(alignment: .leading) {
+                Tone.hairline
+                if model.isRunning {
+                    Tone.ink.frame(width: max(8, geometry.size.width * fraction))
+                        .animation(.easeOut(duration: 0.25), value: progress.done)
+                }
+            }
+        }
+        .frame(height: model.isRunning ? 2 : 1)
+        .accessibilityHidden(true)
+    }
+}
+
 // MARK: Sidebar
 
 struct Sidebar: View {
@@ -46,15 +93,17 @@ struct Sidebar: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Eyebrow(text: "Sites")
-                .padding(.horizontal, 16)
-                .padding(.top, 52)
-                .padding(.bottom, 8)
+            SectionLabel(text: "Sites")
+                .padding(.horizontal, 18)
+                .padding(.top, 54)
+                .padding(.bottom, 6)
             if model.sites.isEmpty {
-                Text("Sites you check are kept here, with their last score.")
+                Text("Sites you check are kept here with their last score.")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
-                    .padding(.horizontal, 16)
+                    .lineSpacing(2)
+                    .padding(.horizontal, 18)
+                    .padding(.top, 2)
                     .fixedSize(horizontal: false, vertical: true)
             } else {
                 Scroller {
@@ -68,17 +117,19 @@ struct Sidebar: View {
                                     model.address = site.host
                                     model.start()
                                 }
+                                Button("Open in Browser") { model.open(site.site) }
+                                Button("Copy Address") { model.copy(site.site) }
+                                Divider()
                                 Button("Forget This Site") { model.forget(site.host) }
                             }
                         }
                     }
-                    .padding(.horizontal, 8)
+                    .padding(.horizontal, 10)
                 }
             }
             Spacer(minLength: 0)
         }
         .frame(maxHeight: .infinity, alignment: .top)
-        .background(Tone.wash)
     }
 }
 
@@ -88,27 +139,28 @@ struct SiteRow: View {
     let action: () -> Void
 
     var body: some View {
+        let blocked = site.count(.error) > 0
         Button(action: action) {
             HStack(spacing: 9) {
-                ScoreRing(score: site.score, blocked: site.count(.error) > 0, size: 18, line: 3)
+                ScoreRing(score: site.score, blocked: blocked, size: 16, line: 2.5)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(site.host.hasPrefix("www.") ? String(site.host.dropFirst(4)) : site.host)
-                        .font(.system(size: 12.5, weight: .medium))
+                        .font(.system(size: 12.5, weight: selected ? .semibold : .medium))
                         .lineLimit(1)
-                        .truncationMode(.middle)
-                    Text("\(site.score) · \(site.date.ago)")
+                    Text(site.date.ago)
                         .font(.system(size: 10.5).monospacedDigit())
                         .foregroundStyle(.secondary)
                 }
-                Spacer(minLength: 0)
+                Spacer(minLength: 4)
+                Text("\(site.score)")
+                    .font(.system(size: 12, weight: .medium).monospacedDigit())
+                    .foregroundStyle(blocked ? AnyShapeStyle(Tone.error) : AnyShapeStyle(.secondary))
             }
-            .padding(.horizontal, 8)
             .frame(height: 40)
-            .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(selected ? Tone.lift : .clear))
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel("\(site.host), score \(site.score), checked \(site.date.ago)")
+        .buttonStyle(RowStyle(selected: selected))
+        .accessibilityLabel("\(site.host), score \(site.score), \(site.grade), checked \(site.date.ago)")
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
 
@@ -126,14 +178,18 @@ struct AddressBar: View {
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.secondary)
                 if isSnapshot {
-                    Text(model.address).font(.system(size: 14)).frame(maxWidth: .infinity, alignment: .leading)
+                    Text(model.address.isEmpty ? "yoursite.com" : model.address)
+                        .font(.system(size: 13))
+                        .foregroundStyle(model.address.isEmpty ? .tertiary : .primary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 } else {
                     TextField("yoursite.com", text: $model.address)
                         .textFieldStyle(.plain)
-                        .font(.system(size: 14))
+                        .font(.system(size: 13))
                         .focused($focused)
                         .onSubmit { model.start() }
                         .disabled(model.isRunning)
+                        .accessibilityLabel("Site address")
                 }
                 if isSnapshot {
                     Image(systemName: "slider.horizontal.3").font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
@@ -141,22 +197,30 @@ struct AddressBar: View {
                     options
                 }
             }
-            .padding(.horizontal, 12)
-            .frame(height: 36)
-            .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(Tone.wash))
-            .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(Tone.hairline))
+            .padding(.horizontal, 11)
+            .frame(height: 30)
+            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Tone.wash))
+            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Color.primary.opacity(focused ? 0.28 : 0), lineWidth: 1))
+            .animation(.easeOut(duration: 0.12), value: focused)
 
             if model.isRunning {
                 Button("Stop") { model.stop() }
                     .buttonStyle(QuietButton())
                     .keyboardShortcut(.cancelAction)
             } else {
-                Button(model.report?.host == Auditor.siteURL(from: model.address)?.host ? "Check again" : "Check") { model.start() }
+                Button(sameSite ? "Check again" : "Check") { model.start() }
                     .buttonStyle(QuietButton(prominent: true))
                     .disabled(model.address.trimmingCharacters(in: .whitespaces).isEmpty)
             }
         }
-        .onAppear { focused = true }
+        .onAppear { focused = model.report == nil }
+    }
+
+    /// True when the address in the field is the site whose report is on screen.
+    private var sameSite: Bool {
+        func bare(_ host: String?) -> String? { host.map { $0.hasPrefix("www.") ? String($0.dropFirst(4)) : $0 } }
+        guard let shown = bare(model.report?.host) else { return false }
+        return shown == bare(Auditor.siteURL(from: model.address)?.host)
     }
 
     private var options: some View {
@@ -177,55 +241,66 @@ struct AddressBar: View {
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .fixedSize()
-        .help("Options")
+        .help("How much to check")
+        .accessibilityLabel("Options")
     }
 }
 
 // MARK: Before, during and when it goes wrong
 
+/// Nothing checked yet: say what to do, and show what an answer looks like.
 struct IdleView: View {
-    private let points = [
-        ("eye.slash", "Indexing", "A noindex left on from staging, a robots.txt that shuts everyone out, canonicals pointing at the wrong domain."),
-        ("link", "Links", "Broken links and images, redirect chains, pages nothing links to."),
-        ("text.alignleft", "Content", "Missing or repeated titles and descriptions, heading order, thin pages, leftover Lorem ipsum."),
-        ("sparkles", "AI search", "Whether ChatGPT, Claude and Perplexity are allowed in, and whether there is an llms.txt."),
-        ("curlybraces", "Structured data", "Schema.org markup that is broken, incomplete or retired."),
-        ("lock", "Security and speed", "HTTPS, security headers, compression, heavy images, slow answers."),
+    private let examples: [(Severity, String, String)] = [
+        (.error, "Pages are set to noindex", "/pricing"),
+        (.error, "Pages still point at a staging domain", "/about"),
+        (.warning, "Pages have no share image", "/contact"),
+        (.warning, "robots.txt blocks AI search crawlers", "/robots.txt"),
+        (.notice, "Titles are too long or too short", "/blog"),
     ]
 
     var body: some View {
         Scroller {
-            VStack(alignment: .leading, spacing: 26) {
-                VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 34) {
+                VStack(alignment: .leading, spacing: 10) {
                     Text("Check a site before it goes live.")
-                        .font(.system(size: 26, weight: .semibold))
-                    Text("Type an address and press Return. Every page in the sitemap is read and checked against \(Check.all.count) things that quietly cost a launch its search traffic.")
+                        .font(.system(size: 30, weight: .semibold))
+                        .tracking(-0.4)
+                    Text("Type an address above and press Return. Every page in the sitemap is read and held against \(Check.all.count) things that quietly cost a launch its search traffic.")
                         .font(.system(size: 14))
                         .foregroundStyle(.secondary)
+                        .lineSpacing(3)
                         .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: 520, alignment: .leading)
+                        .frame(maxWidth: 500, alignment: .leading)
                 }
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-                    ForEach(points, id: \.1) { icon, title, text in
-                        Card(padding: 14) {
-                            VStack(alignment: .leading, spacing: 6) {
-                                HStack(spacing: 7) {
-                                    Image(systemName: icon).font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary).frame(width: 16)
-                                    Text(title).font(.system(size: 13, weight: .semibold))
-                                }
-                                Text(text)
-                                    .font(.system(size: 12))
-                                    .foregroundStyle(.secondary)
-                                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 8) {
+                    SectionLabel(text: "The kind of thing it finds")
+                    VStack(spacing: 0) {
+                        ForEach(Array(examples.enumerated()), id: \.offset) { index, example in
+                            if index > 0 { Tone.hairline.frame(height: 1) }
+                            HStack(spacing: 10) {
+                                Mark(example.0)
+                                Text(example.1).font(.system(size: 13, weight: .medium))
+                                Spacer(minLength: 12)
+                                Text(example.2).font(.system(size: 11.5, design: .monospaced)).foregroundStyle(.secondary)
                             }
-                            .frame(maxWidth: .infinity, minHeight: 74, alignment: .topLeading)
+                            .frame(height: 36)
                         }
                     }
+                    .frame(maxWidth: 500)
+                }
+                VStack(alignment: .leading, spacing: 8) {
+                    SectionLabel(text: "Ten areas")
+                    Text(LaunchcheckCore.Category.allCases.map(\.title).joined(separator: ", ") + ".")
+                        .font(.system(size: 13))
+                        .foregroundStyle(.secondary)
+                        .lineSpacing(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: 500, alignment: .leading)
                 }
             }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 30)
-            .frame(maxWidth: 760, alignment: .leading)
+            .padding(.horizontal, 28)
+            .padding(.top, 44)
+            .padding(.bottom, 28)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
@@ -236,73 +311,72 @@ struct RunningView: View {
 
     var body: some View {
         let progress = model.progress
-        VStack(alignment: .leading, spacing: 22) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Checking \(Auditor.siteURL(from: model.address)?.host ?? model.address)")
-                    .font(.system(size: 22, weight: .semibold))
+        VStack(alignment: .leading, spacing: 26) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Reading \(Auditor.siteURL(from: model.address)?.host ?? model.address)")
+                    .font(.system(size: 26, weight: .semibold))
+                    .tracking(-0.3)
                     .lineLimit(1)
-                Text("Reading the site the way a search engine does.")
+                    .truncationMode(.middle)
+                Text("The way a search engine does: every page, every link, nothing run.")
                     .font(.system(size: 13))
                     .foregroundStyle(.secondary)
             }
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(model.finishedSteps.enumerated()), id: \.offset) { _, step in
                     HStack(spacing: 10) {
-                        Image(systemName: "checkmark").font(.system(size: 9, weight: .bold)).foregroundStyle(Tone.passed).frame(width: 14)
+                        Mark(.passed)
                         Text(step).font(.system(size: 13).monospacedDigit()).foregroundStyle(.secondary)
                     }
+                    .frame(height: 28)
                     .transition(.opacity)
                 }
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 10) {
-                        Circle().fill(Color.primary).frame(width: 6, height: 6).frame(width: 14)
-                        Text(progress.phase).font(.system(size: 13, weight: .semibold))
-                        Spacer()
-                        if progress.total > 0 {
-                            Text("\(progress.done) of \(progress.total)")
-                                .font(.system(size: 12).monospacedDigit())
-                                .foregroundStyle(.secondary)
-                        }
+                HStack(spacing: 10) {
+                    ProgressView().controlSize(.small).scaleEffect(0.6).frame(width: 12, height: 12)
+                    Text(progress.phase).font(.system(size: 13, weight: .semibold))
+                    if progress.total > 0 {
+                        Text("\(progress.done) of \(progress.total)")
+                            .font(.system(size: 12).monospacedDigit())
+                            .foregroundStyle(.secondary)
                     }
-                    GeometryReader { geometry in
-                        let fraction = progress.total > 0 ? min(1, Double(progress.done) / Double(progress.total)) : 0.04
-                        ZStack(alignment: .leading) {
-                            Capsule().fill(Tone.hairline)
-                            Capsule().fill(Color.primary).frame(width: max(6, geometry.size.width * fraction))
-                        }
-                    }
-                    .frame(height: 3)
-                    .padding(.leading, 24)
                 }
+                .frame(height: 28)
             }
             .animation(.easeOut(duration: 0.2), value: model.finishedSteps.count)
-            .animation(.easeOut(duration: 0.25), value: progress.done)
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 30)
-        .frame(maxWidth: 560, alignment: .leading)
+        .padding(.horizontal, 28)
+        .padding(.top, 44)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .accessibilityElement(children: .combine)
     }
 }
 
 struct FailedView: View {
     let message: String
+    let retry: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
-                Circle().fill(Tone.error).frame(width: 7, height: 7)
-                Text("Could not check that site").font(.system(size: 18, weight: .semibold))
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("That site could not be checked")
+                    .font(.system(size: 26, weight: .semibold))
+                    .tracking(-0.3)
+                Text(message)
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+                    .lineSpacing(3)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: 500, alignment: .leading)
             }
-            Text(message)
+            Text("Check the spelling, or try the address in a browser first.")
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
-                .textSelection(.enabled)
+            Button("Try again", action: retry).buttonStyle(QuietButton())
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 30)
+        .padding(.horizontal, 28)
+        .padding(.top, 44)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
@@ -312,40 +386,59 @@ struct FailedView: View {
 struct ReportShell: View {
     @ObservedObject var model: AuditModel
     let report: Report
+    @Namespace private var tabs
     @Environment(\.isSnapshot) private var isSnapshot
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 2) {
+            HStack(spacing: 0) {
                 ForEach(AuditModel.Tab.allCases, id: \.self) { tab in
-                    TabButton(title: tab.rawValue, count: count(for: tab), selected: model.tab == tab) { model.tab = tab }
+                    TabButton(title: tab.rawValue, count: count(for: tab), selected: model.tab == tab, namespace: tabs) {
+                        // A click slides the underline; the keyboard shortcuts switch at once.
+                        if reduceMotion { model.tab = tab } else { withAnimation(Motion.move) { model.tab = tab } }
+                    }
                 }
                 Spacer()
-                if isSnapshot {
-                    Text("Export").font(.system(size: 11.5, weight: .medium)).padding(.horizontal, 10).frame(height: 24)
-                        .background(RoundedRectangle(cornerRadius: 6).fill(Tone.wash))
-                        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Tone.hairline))
-                } else {
-                    Menu("Export") {
-                        Button("Copy as Markdown") { model.copyMarkdown() }
-                        Button("Save as Markdown…") { model.save(json: false) }
-                        Button("Save as JSON…") { model.save(json: true) }
-                    }
-                    .menuStyle(.borderlessButton)
-                    .fixedSize()
-                    .font(.system(size: 12))
-                }
+                export
             }
-            .padding(.horizontal, 20)
-            .frame(height: 42)
+            .padding(.leading, 18)
+            .padding(.trailing, 16)
+            .frame(height: 40)
             Tone.hairline.frame(height: 1)
 
-            switch model.tab {
-            case .overview: OverviewTab(model: model, report: report)
-            case .issues: IssuesTab(model: model, report: report)
-            case .pages: PagesTab(model: model, report: report)
-            case .changes: ChangesTab(model: model, report: report)
+            Group {
+                switch model.tab {
+                case .overview: OverviewTab(model: model, report: report)
+                case .issues: IssuesTab(model: model, report: report)
+                case .pages: PagesTab(model: model, report: report)
+                case .changes: ChangesTab(model: model, report: report)
+                }
             }
+            .transaction { $0.animation = nil }
+        }
+    }
+
+    @ViewBuilder private var export: some View {
+        if isSnapshot {
+            HStack(spacing: 5) {
+                Image(systemName: "square.and.arrow.up").font(.system(size: 10.5, weight: .medium))
+                Text("Export").font(.system(size: 11.5, weight: .medium))
+            }
+            .foregroundStyle(.secondary)
+        } else {
+            Menu {
+                Button("Copy as Markdown") { model.copyMarkdown() }
+                Button("Save as Markdown…") { model.save(json: false) }
+                Button("Save as JSON…") { model.save(json: true) }
+            } label: {
+                Label(model.copied ? "Copied" : "Export", systemImage: model.copied ? "checkmark" : "square.and.arrow.up")
+                    .font(.system(size: 11.5, weight: .medium))
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help("Copy or save this report")
         }
     }
 
@@ -366,26 +459,33 @@ struct TabButton: View {
     let title: String
     let count: Int?
     let selected: Bool
+    let namespace: Namespace.ID
     let action: () -> Void
+    @State private var hovering = false
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 5) {
-                Text(title).font(.system(size: 12.5, weight: selected ? .semibold : .medium))
+                Text(title).font(.system(size: 12.5, weight: .medium))
                 if let count {
                     Text("\(count)")
                         .font(.system(size: 10.5, weight: .medium).monospacedDigit())
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.tertiary)
                 }
             }
-            .foregroundStyle(selected ? .primary : .secondary)
+            .foregroundStyle(selected || hovering ? .primary : .secondary)
             .padding(.horizontal, 10)
-            .frame(height: 42)
+            .frame(height: 40)
             .overlay(alignment: .bottom) {
-                Rectangle().fill(selected ? Color.primary : .clear).frame(height: 2).padding(.horizontal, 10)
+                if selected {
+                    Rectangle().fill(Tone.ink).frame(height: 2).padding(.horizontal, 10)
+                        .matchedGeometryEffect(id: "underline", in: namespace)
+                }
             }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }

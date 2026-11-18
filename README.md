@@ -23,7 +23,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/overview-dark.png">
-    <img src="docs/overview.png" width="900" alt="Launchcheck overview: a score of 77, three things to fix before launch, scores by area and where to start">
+    <img src="docs/overview.png" width="900" alt="Launchcheck overview: three things to fix before launch, a score of 77, one bar for every check that ran, a square for each of 48 pages, and scores by area">
   </picture>
 </p>
 
@@ -32,7 +32,8 @@
 Most launch mistakes are not hard to fix. They are hard to notice: a noindex carried over from staging, a canonical still pointing at `something.webflow.io`, a share image that 404s, a robots.txt that shuts out the AI search engines. Launchcheck reads every page in the sitemap and runs 84 checks against it.
 
 - **One line, then a score.** The verdict says whether the site can launch. The score says how far it is from tidy, broken down into ten areas.
-- **Sorted by what matters.** Fix before launch, should fix, worth a look. Every check explains itself in a sentence.
+- **The whole site at a glance.** One square per page, colored by the worst thing found on it. Click one to open that page.
+- **Sorted by what matters.** Fix before launch, should fix, worth a look. Every check says why it matters, when it counts as done, and where it was found, and copies out as a checklist for a ticket.
 - **Staging leftovers.** Noindex tags and headers, canonicals, share images and links that still point at a staging domain, and sitemaps generated on one.
 - **Every link and image.** Broken links, broken and overweight images, redirect chains, temporary redirects, pages nothing links to, pages buried more than three clicks deep.
 - **The head of every page.** Titles, descriptions, canonicals, headings, share tags, alt text, repeated tags.
@@ -67,7 +68,7 @@ Each check of a site is kept. The next one is compared with it: what was fixed, 
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/issues-dark.png">
-    <img src="docs/issues.png" width="900" alt="The Issues tab: issues grouped by severity, filtered by area, with noindex pages and a staging canonical opened up">
+    <img src="docs/issues.png" width="900" alt="The Issues tab: issues grouped by severity on the left, and on the right why the selected one matters, when it counts as done and the pages it was found on">
   </picture>
 </p>
 
@@ -100,6 +101,7 @@ Type a site and press Return. Sites you have checked stay in the sidebar with th
 | Shortcut | Does |
 |---|---|
 | Return | Check the site |
+| ↑ and ↓ | Move through the issues or the pages |
 | Esc | Stop |
 | ⌘R | Check again |
 | ⌘1 to ⌘4 | Overview, Issues, Pages, Changes |
@@ -166,8 +168,11 @@ What it deliberately does not do: anything that needs a paid data source, a Goog
 ## Design notes
 
 - **One line first.** The verdict is the largest thing on screen. The score comes second, and everything below is evidence.
-- **Color means something.** Red, amber and green are only ever severity. The rest is monochrome with hairlines.
-- **Open what is urgent.** Errors arrive expanded. Everything else is one click away.
+- **Color means something.** Red, amber and green are only ever severity. The rest is warm monochrome with hairlines.
+- **Open what is urgent.** The most serious issue is already selected and explained. Everything else is one arrow key away.
+- **Shape as well as color.** A disc must be fixed, a diamond should be, a small dot is worth a look, so severity survives color blindness.
+- **Boxes only for real objects.** Lists are hairlines on one surface. The only cards are the search result and the share card, because those are cards in real life.
+- **Motion that answers.** Buttons press, the tab underline slides under the pointer, the score draws once. Keyboard actions never animate.
 - **Numbers that hold still.** Counts use tabular digits, so nothing jitters while a check runs.
 - **Plain words.** No jargon where a sentence will do, and every check says why it matters.
 - **Show, do not describe.** A title that is too long is shown cut off, the way a search result would cut it.

@@ -29,11 +29,20 @@ final class AuditModel: ObservableObject {
     @Published var sites: [Report] = []
 
     @Published var tab: Tab = .overview
-    @Published var category: LaunchcheckCore.Category?
+    enum Grouping: Hashable {
+        case severity, area
+    }
+
+    @Published var grouping: Grouping = .severity
     @Published var search = ""
     @Published var pageSearch = ""
     @Published var selectedPage: String?
-    @Published var expanded: Set<String> = []
+    @Published var selectedIssue: String?
+    @Published var showsPassed = false
+    /// Scores of the checks kept for this site, oldest first, ending with the one on screen.
+    @Published var trail: [Int] = []
+    /// Briefly true after something was copied, so the button can say so.
+    @Published var copied = false
 
     @Published var maxPages: Int {
         didSet { UserDefaults.standard.set(maxPages, forKey: "maxPages") }
@@ -131,12 +140,15 @@ final class AuditModel: ObservableObject {
     func present(_ report: Report, comparedWith previous: Report?) {
         self.report = report
         comparison = previous.map { Drift.compare($0, report) }
+        trail = Array(history.reports(for: report.host).filter { $0.date <= report.date }.sorted { $0.date < $1.date }.map(\.score).suffix(12))
+        if trail.isEmpty { trail = (previous.map { [$0.score] } ?? []) + [report.score] }
         tab = .overview
-        category = nil
+        grouping = .severity
         search = ""
         pageSearch = ""
-        // What must be fixed is open from the start; the rest waits to be asked.
-        expanded = Set(report.groups.filter { $0.check.severity == .error }.map(\.id))
+        showsPassed = false
+        // The most serious problem is already open; the rest is one arrow key away.
+        selectedIssue = report.groups.first?.id
         selectedPage = sortedPages(of: report).first?.url
         phase = .done
     }
@@ -152,26 +164,59 @@ final class AuditModel: ObservableObject {
     }
 
     func reveal(_ check: Check) {
-        category = nil
         search = ""
-        expanded.insert(check.id)
+        selectedIssue = check.id
         tab = .issues
     }
 
     func filter(by category: LaunchcheckCore.Category) {
-        self.category = category
         search = ""
+        grouping = .area
+        if let first = report?.groups.first(where: { $0.check.category == category }) { selectedIssue = first.id }
         tab = .issues
+    }
+
+    func showPage(_ address: String?) {
+        guard let address, report?.pages.contains(where: { $0.url == address }) == true else { return }
+        pageSearch = ""
+        selectedPage = address
+        tab = .pages
     }
 
     var visibleGroups: [Report.Group] {
         guard let report else { return [] }
         let needle = search.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !needle.isEmpty else { return report.groups }
         return report.groups.filter { group in
-            if let category, group.check.category != category { return false }
-            guard !needle.isEmpty else { return true }
-            return group.check.title.lowercased().contains(needle)
+            group.check.title.lowercased().contains(needle)
+                || group.check.category.title.lowercased().contains(needle)
                 || group.findings.contains { ($0.url ?? "").lowercased().contains(needle) || ($0.detail ?? "").lowercased().contains(needle) }
+        }
+    }
+
+    /// The issues in the order the list shows them, so the arrow keys follow what is on screen.
+    var orderedGroups: [Report.Group] {
+        let groups = visibleGroups
+        guard grouping == .area else { return groups }
+        return LaunchcheckCore.Category.allCases.flatMap { category in groups.filter { $0.check.category == category } }
+    }
+
+    /// Moves the selection in whichever list is showing. Driven by the arrow keys.
+    func move(by step: Int) {
+        guard phase == .done || phase == .idle, report != nil else { return }
+        switch tab {
+        case .issues:
+            let ids = orderedGroups.map(\.id)
+            guard !ids.isEmpty else { return }
+            let index = selectedIssue.flatMap { ids.firstIndex(of: $0) } ?? (step > 0 ? -1 : ids.count)
+            selectedIssue = ids[min(ids.count - 1, max(0, index + step))]
+        case .pages:
+            let urls = visiblePages.map(\.url)
+            guard !urls.isEmpty else { return }
+            let index = selectedPage.flatMap { urls.firstIndex(of: $0) } ?? (step > 0 ? -1 : urls.count)
+            selectedPage = urls[min(urls.count - 1, max(0, index + step))]
+        default:
+            break
         }
     }
 
@@ -196,8 +241,29 @@ final class AuditModel: ObservableObject {
 
     func copyMarkdown() {
         guard let report else { return }
+        copy(ReportFormat.markdown(report))
+    }
+
+    /// One issue as a to-do: what is wrong, why it matters, when it is done, and where.
+    func copyTask(_ group: Report.Group) {
+        guard let report else { return }
+        var lines = ["## \(group.check.title)", "", group.check.why, "", "Done when: \(group.check.passed.prefix(1).lowercased() + group.check.passed.dropFirst())."]
+        if !group.findings.isEmpty { lines.append("") }
+        for finding in group.findings {
+            let place = finding.url.map { ReportFormat.short($0, site: report.site) } ?? report.host
+            lines.append("- [ ] \(place)\(finding.detail.map { ": \($0)" } ?? "")")
+        }
+        copy(lines.joined(separator: "\n"))
+    }
+
+    func copy(_ text: String) {
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(ReportFormat.markdown(report), forType: .string)
+        NSPasteboard.general.setString(text, forType: .string)
+        copied = true
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(1.4))
+            self?.copied = false
+        }
     }
 
     func save(json: Bool) {
