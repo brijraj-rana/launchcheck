@@ -57,13 +57,6 @@ enum Tone {
     }
 }
 
-enum Motion {
-    /// Quick and decisive: starts fast, settles gently.
-    static let press = Animation.timingCurve(0.23, 1, 0.32, 1, duration: 0.14)
-    static let move = Animation.timingCurve(0.23, 1, 0.32, 1, duration: 0.22)
-    static let reveal = Animation.timingCurve(0.23, 1, 0.32, 1, duration: 0.7)
-}
-
 private struct SnapshotKey: EnvironmentKey {
     static let defaultValue = false
 }
@@ -245,6 +238,8 @@ struct ScoreRing: View {
             if size >= 44 {
                 Text("\(score)")
                     .font(.system(size: size * 0.36, weight: .semibold, design: .rounded).monospacedDigit())
+                    .contentTransition(.numericText(value: Double(score)))
+                    .animation(Motion.reduced ? nil : Motion.move, value: score)
             }
         }
         .frame(width: size, height: size)
@@ -375,22 +370,26 @@ struct SearchField: View {
 struct Segments<Value: Hashable>: View {
     let options: [(Value, String)]
     @Binding var selection: Value
+    @Namespace private var pill
 
     var body: some View {
         HStack(spacing: 2) {
             ForEach(options, id: \.0) { value, title in
-                Button { selection = value } label: {
+                Button { Motion.run(Motion.move) { selection = value } } label: {
                     Text(title)
                         .font(.system(size: 11.5, weight: selection == value ? .semibold : .medium))
                         .foregroundStyle(selection == value ? .primary : .secondary)
                         .padding(.horizontal, 10)
                         .frame(height: 22)
-                        .background(
-                            RoundedRectangle(cornerRadius: 5, style: .continuous)
-                                .fill(Tone.raised)
-                                .shadow(color: .black.opacity(0.12), radius: 1, y: 0.5)
-                                .opacity(selection == value ? 1 : 0)
-                        )
+                        .background {
+                            // One pill that travels between the choices, not one per choice fading.
+                            if selection == value {
+                                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                    .fill(Tone.raised)
+                                    .shadow(color: .black.opacity(0.12), radius: 1, y: 0.5)
+                                    .matchedGeometryEffect(id: "pill", in: pill)
+                            }
+                        }
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)

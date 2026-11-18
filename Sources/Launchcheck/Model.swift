@@ -45,6 +45,10 @@ final class AuditModel: ObservableObject {
     @Published var copied = false
     /// The checks kept for the site on screen, newest first.
     @Published var checks: [Report] = []
+    /// True from the moment a fresh check lands until the overview has played its arrival.
+    @Published var arrived = false
+    /// Counts failed checks, so the address bar can shake once for each.
+    @Published var failures = 0
     /// A deletion waiting for the user to confirm it.
     @Published var removal: Removal?
 
@@ -122,6 +126,7 @@ final class AuditModel: ObservableObject {
             } catch {
                 guard let self, self.run == current else { return }
                 self.phase = .failed(error.localizedDescription)
+                self.failures += 1
             }
         }
     }
@@ -134,6 +139,7 @@ final class AuditModel: ObservableObject {
         let previous = history.latest(for: report.host)
         history.save(report)
         sites = history.sites()
+        arrived = true
         present(report, comparedWith: previous)
     }
 

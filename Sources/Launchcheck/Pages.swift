@@ -31,7 +31,7 @@ struct PagesTab: View {
                         ForEach(pages) { page in
                             PageRow(page: page, site: report.site, severity: worst[page.url], issues: counts[page.url] ?? 0,
                                     selected: model.selectedPage == page.url) {
-                                model.selectedPage = page.url
+                                Motion.run(Motion.swap) { model.selectedPage = page.url }
                             }
                             .id(page.url)
                             .contextMenu {
@@ -49,6 +49,8 @@ struct PagesTab: View {
             Group {
                 if let page = report.pages.first(where: { $0.url == model.selectedPage }) {
                     PageInspector(model: model, report: report, page: page)
+                        .id(page.url)
+                        .transition(.soft)
                 } else {
                     Text("Pick a page").font(.system(size: 13, weight: .medium)).foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)

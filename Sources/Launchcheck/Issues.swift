@@ -13,6 +13,8 @@ struct IssuesTab: View {
             Group {
                 if let group = report.groups.first(where: { $0.id == model.selectedIssue }) {
                     IssueInspector(model: model, report: report, group: group)
+                        .id(group.id)
+                        .transition(.soft)
                 } else {
                     VStack(spacing: 6) {
                         Text(report.groups.isEmpty ? "Nothing to fix" : "Pick an issue")
@@ -55,7 +57,8 @@ struct IssuesTab: View {
                             VStack(spacing: 1) {
                                 ForEach(section.groups) { group in
                                     IssueRow(group: group, showsArea: model.grouping == .severity, selected: model.selectedIssue == group.id) {
-                                        model.selectedIssue = group.id
+                                        // A click dissolves one explanation into the next; the arrow keys switch at once.
+                                        Motion.run(Motion.swap) { model.selectedIssue = group.id }
                                     }
                                     .id(group.id)
                                     .contextMenu {
@@ -93,7 +96,7 @@ struct IssuesTab: View {
 
     private var passed: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Button { model.showsPassed.toggle() } label: {
+            Button { Motion.run(Motion.move) { model.showsPassed.toggle() } } label: {
                 HStack(spacing: 6) {
                     SectionLabel(text: "Passed", count: report.passedChecks.count)
                     Image(systemName: "chevron.right")
@@ -118,6 +121,7 @@ struct IssuesTab: View {
                     }
                 }
                 .padding(.horizontal, 8)
+                .transition(.soft)
             }
         }
     }
@@ -217,7 +221,7 @@ struct IssueInspector: View {
                 }
 
                 HStack(spacing: 8) {
-                    Button(model.copied ? "Copied" : "Copy as task") { model.copyTask(group) }
+                    Button { model.copyTask(group) } label: { SwapText(text: model.copied ? "Copied" : "Copy as task") }
                         .buttonStyle(QuietButton(compact: true))
                         .help("Copy this issue as a checklist for a ticket or a message")
                     if let first = group.findings.compactMap(\.url).first {

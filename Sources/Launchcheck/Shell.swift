@@ -91,7 +91,7 @@ struct RunLine: View {
                 Tone.hairline
                 if model.isRunning {
                     Tone.ink.frame(width: max(8, geometry.size.width * fraction))
-                        .animation(.easeOut(duration: 0.25), value: progress.done)
+                        .animation(Motion.smoothOut(Motion.fast), value: progress.done)
                 }
             }
         }
@@ -191,11 +191,12 @@ struct SiteRow: View {
                     }
                     .buttonStyle(.plain)
                     .padding(.trailing, 6)
+                    .transition(.scale(scale: 0.9).combined(with: .opacity))
                     .help("Delete this site")
                     .accessibilityLabel("Delete \(site.host)")
                 }
             }
-            .onHover { hovering = $0 }
+            .onHover { inside in Motion.run(Motion.swap) { hovering = inside } }
     }
 
     private func row(blocked: Bool) -> some View {
@@ -260,8 +261,9 @@ struct AddressBar: View {
             .padding(.horizontal, 11)
             .frame(height: 30)
             .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Tone.wash))
+            .shake(on: model.failures)
             .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Color.primary.opacity(focused ? 0.28 : 0), lineWidth: 1))
-            .animation(.easeOut(duration: 0.12), value: focused)
+            .animation(Motion.swap, value: focused)
 
             if model.isRunning {
                 Button("Stop") { model.stop() }
@@ -392,8 +394,8 @@ struct RunningView: View {
                     .transition(.opacity)
                 }
                 HStack(spacing: 10) {
-                    ProgressView().controlSize(.small).scaleEffect(0.6).frame(width: 12, height: 12)
-                    Text(progress.phase).font(.system(size: 13, weight: .semibold))
+                    Circle().fill(Tone.ink).frame(width: 5, height: 5).frame(width: 12, height: 12)
+                    SwapText(text: progress.phase).font(.system(size: 13, weight: .semibold)).shimmer()
                     if progress.total > 0 {
                         Text("\(progress.done) of \(progress.total)")
                             .font(.system(size: 12).monospacedDigit())
@@ -402,7 +404,7 @@ struct RunningView: View {
                 }
                 .frame(height: 28)
             }
-            .animation(.easeOut(duration: 0.2), value: model.finishedSteps.count)
+            .animation(Motion.reduced ? nil : Motion.move, value: model.finishedSteps.count)
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 28)
@@ -448,7 +450,6 @@ struct ReportShell: View {
     let report: Report
     @Namespace private var tabs
     @Environment(\.isSnapshot) private var isSnapshot
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: 0) {
@@ -456,7 +457,7 @@ struct ReportShell: View {
                 ForEach(AuditModel.Tab.allCases, id: \.self) { tab in
                     TabButton(title: tab.rawValue, count: count(for: tab), selected: model.tab == tab, namespace: tabs) {
                         // A click slides the underline; the keyboard shortcuts switch at once.
-                        if reduceMotion { model.tab = tab } else { withAnimation(Motion.move) { model.tab = tab } }
+                        Motion.run(Motion.move) { model.tab = tab }
                     }
                 }
                 Spacer()
@@ -475,7 +476,8 @@ struct ReportShell: View {
                 case .changes: ChangesTab(model: model, report: report)
                 }
             }
-            .transaction { $0.animation = nil }
+            // Only the underline slides; the tab's contents change at once.
+            .transaction(value: model.tab) { $0.animation = nil }
         }
     }
 
@@ -492,7 +494,7 @@ struct ReportShell: View {
                 Button("Save as Markdown…") { model.save(json: false) }
                 Button("Save as JSON…") { model.save(json: true) }
             } label: {
-                Label(model.copied ? "Copied" : "Export", systemImage: model.copied ? "checkmark" : "square.and.arrow.up")
+                Label(model.copied && model.tab != .issues ? "Copied" : "Export", systemImage: model.copied && model.tab != .issues ? "checkmark" : "square.and.arrow.up")
                     .font(.system(size: 11.5, weight: .medium))
             }
             .menuStyle(.borderlessButton)

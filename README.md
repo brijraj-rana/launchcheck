@@ -172,7 +172,7 @@ What it deliberately does not do: anything that needs a paid data source, a Goog
 - **Open what is urgent.** The most serious issue is already selected and explained. Everything else is one arrow key away.
 - **Shape as well as color.** A disc must be fixed, a diamond should be, a small dot is worth a look, so severity survives color blindness.
 - **Boxes only for real objects.** Lists are hairlines on one surface. The only cards are the search result and the share card, because those are cards in real life.
-- **Motion that answers.** Buttons press, the tab underline slides under the pointer, the score draws once. Keyboard actions never animate.
+- **Motion that answers.** One small scale of durations and one curve, after the tokens at [transitions.dev](https://transitions.dev). Buttons press, the underline and the pill slide, labels swap through a light blur, a fresh report rises into place once. Keyboard actions never animate, and Reduce Motion is respected.
 - **Numbers that hold still.** Counts use tabular digits, so nothing jitters while a check runs.
 - **Plain words.** No jargon where a sentence will do, and every check says why it matters.
 - **Show, do not describe.** A title that is too long is shown cut off, the way a search result would cut it.

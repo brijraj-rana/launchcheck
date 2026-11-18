@@ -4,21 +4,34 @@ import SwiftUI
 struct OverviewTab: View {
     @ObservedObject var model: AuditModel
     let report: Report
+    /// False for an instant when a fresh check lands, so the page can rise into place once.
+    @State private var shown: Bool
+
+    init(model: AuditModel, report: Report) {
+        self.model = model
+        self.report = report
+        _shown = State(initialValue: !(model.arrived && !Motion.reduced))
+    }
 
     var body: some View {
         Scroller {
             VStack(alignment: .leading, spacing: 30) {
-                headline
-                Tally(report: report)
-                PageMap(model: model, report: report)
+                headline.rise(shown, order: 0)
+                Tally(report: report).rise(shown, order: 1)
+                PageMap(model: model, report: report).rise(shown, order: 2)
                 HStack(alignment: .top, spacing: 36) {
                     next.frame(maxWidth: .infinity, alignment: .leading)
                     areas.frame(width: 268)
                 }
+                .rise(shown, order: 3)
             }
             .padding(.horizontal, 28)
             .padding(.top, 30)
             .padding(.bottom, 28)
+        }
+        .onAppear {
+            model.arrived = false
+            if !shown { DispatchQueue.main.async { shown = true } }
         }
     }
 
