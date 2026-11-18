@@ -13,6 +13,7 @@ struct PagesTab: View {
             VStack(spacing: 0) {
                 HStack(spacing: 8) {
                     SearchField(prompt: "Filter \(report.pages.count) pages", text: $model.pageSearch)
+                    SortMenu(sort: $model.pageSort)
                 }
                 .padding(.horizontal, 16)
                 .frame(height: 48)
@@ -29,7 +30,7 @@ struct PagesTab: View {
                                 .padding(.top, 8)
                         }
                         ForEach(pages) { page in
-                            PageRow(page: page, site: report.site, severity: worst[page.url], issues: counts[page.url] ?? 0,
+                            PageRow(page: page, site: report.site, severity: worst[page.url], issues: counts[page.url] ?? 0, sort: model.pageSort,
                                     selected: model.selectedPage == page.url) {
                                 Motion.run(Motion.swap) { model.selectedPage = page.url }
                             }
@@ -66,8 +67,19 @@ struct PageRow: View {
     let site: String
     let severity: Severity?
     let issues: Int
+    let sort: AuditModel.PageSort
     let selected: Bool
     let action: () -> Void
+
+    /// The figure the list is sorted by, so the order explains itself.
+    private var figure: String? {
+        switch sort {
+        case .issues, .path: return issues > 0 ? "\(issues)" : nil
+        case .slowest: return page.milliseconds > 0 ? "\(page.milliseconds) ms" : nil
+        case .thinnest: return "\(page.words.formatted()) words"
+        case .deepest: return page.depth.map { $0 == 1 ? "1 click" : "\($0) clicks" }
+        }
+    }
 
     var body: some View {
         let path = ReportFormat.short(page.url, site: site)
@@ -87,8 +99,8 @@ struct PageRow: View {
                         .font(.system(size: 10.5, weight: .medium))
                         .foregroundStyle(Tone.error)
                 }
-                if issues > 0 {
-                    Text("\(issues)")
+                if let figure {
+                    Text(figure)
                         .font(.system(size: 11.5, weight: .medium).monospacedDigit())
                         .foregroundStyle(.secondary)
                         .frame(minWidth: 18, alignment: .trailing)
@@ -120,6 +132,7 @@ struct PageInspector: View {
                         .truncationMode(.middle)
                         .textSelection(.enabled)
                     Spacer(minLength: 8)
+                    Stepper(model: model)
                     Button("Open") { model.open(page.url) }.buttonStyle(QuietButton(compact: true)).help("Open this page in the browser")
                 }
                 block("In search") { SearchPreview(page: page, host: report.host) }
@@ -352,5 +365,77 @@ struct SharePreview: View {
                 Text(text).font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
             }
         }
+    }
+}
+
+/// How the page list is ordered.
+struct SortMenu: View {
+    @Binding var sort: AuditModel.PageSort
+    @Environment(\.isSnapshot) private var isSnapshot
+
+    var body: some View {
+        if isSnapshot {
+            label
+        } else {
+            Menu {
+                Picker("Sort by", selection: $sort) {
+                    ForEach(AuditModel.PageSort.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.inline)
+            } label: {
+                label
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help("Sort the pages")
+            .accessibilityLabel("Sort by \(sort.rawValue)")
+        }
+    }
+
+    private var label: some View {
+        HStack(spacing: 5) {
+            Image(systemName: "arrow.up.arrow.down").font(.system(size: 10, weight: .medium))
+            Text(sort.rawValue).font(.system(size: 11.5, weight: .medium))
+        }
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 9)
+        .frame(height: 28)
+        .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(Tone.wash))
+    }
+}
+
+/// "3 of 20" with a step either way: where you are in the list, and the way to the next one.
+struct Stepper: View {
+    @ObservedObject var model: AuditModel
+
+    var body: some View {
+        if let position = model.position {
+            HStack(spacing: 2) {
+                Text("\(position.index) of \(position.count)")
+                    .font(.system(size: 11).monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .padding(.trailing, 4)
+                step("chevron.up", "Previous", by: -1, enabled: position.index > 1)
+                step("chevron.down", "Next", by: 1, enabled: position.index < position.count)
+            }
+            .fixedSize()
+        }
+    }
+
+    private func step(_ symbol: String, _ label: String, by amount: Int, enabled: Bool) -> some View {
+        Button { model.move(by: amount) } label: {
+            Image(systemName: symbol)
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(.secondary)
+                .frame(width: 22, height: 22)
+                .background(RoundedRectangle(cornerRadius: 5, style: .continuous).fill(Tone.wash))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+        .opacity(enabled ? 1 : 0.35)
+        .help("\(label) (\(amount < 0 ? "↑" : "↓"))")
+        .accessibilityLabel(label)
     }
 }

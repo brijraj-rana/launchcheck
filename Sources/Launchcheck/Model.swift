@@ -38,7 +38,22 @@ final class AuditModel: ObservableObject {
     @Published var pageSearch = ""
     @Published var selectedPage: String?
     @Published var selectedIssue: String?
-    @Published var showsPassed = false
+    /// Which checks the issue list shows.
+    enum Scope: Hashable {
+        case all, error, warning, notice, passed
+    }
+
+    /// The order of the page list, and so the figure each row shows.
+    enum PageSort: String, CaseIterable {
+        case issues = "Most to fix"
+        case slowest = "Slowest"
+        case thinnest = "Fewest words"
+        case deepest = "Most clicks from home"
+        case path = "Address"
+    }
+
+    @Published var scope: Scope = .all
+    @Published var pageSort: PageSort = .issues
     /// Scores of the checks kept for this site, oldest first, ending with the one on screen.
     @Published var trail: [Int] = []
     /// Briefly true after something was copied, so the button can say so.
@@ -171,7 +186,8 @@ final class AuditModel: ObservableObject {
         grouping = .severity
         search = ""
         pageSearch = ""
-        showsPassed = false
+        scope = .all
+        pageSort = .issues
         // The most serious problem is already open; the rest is one arrow key away.
         selectedIssue = report.groups.first?.id
         selectedPage = sortedPages(of: report).first?.url
@@ -230,12 +246,14 @@ final class AuditModel: ObservableObject {
 
     func reveal(_ check: Check) {
         search = ""
+        scope = .all
         selectedIssue = check.id
         tab = .issues
     }
 
     func filter(by category: LaunchcheckCore.Category) {
         search = ""
+        scope = .all
         grouping = .area
         if let first = report?.groups.first(where: { $0.check.category == category }) { selectedIssue = first.id }
         tab = .issues
@@ -251,8 +269,17 @@ final class AuditModel: ObservableObject {
     var visibleGroups: [Report.Group] {
         guard let report else { return [] }
         let needle = search.trimmingCharacters(in: .whitespaces).lowercased()
-        guard !needle.isEmpty else { return report.groups }
-        return report.groups.filter { group in
+        let scoped = report.groups.filter { group in
+            switch scope {
+            case .all: return true
+            case .error: return group.check.severity == .error
+            case .warning: return group.check.severity == .warning
+            case .notice: return group.check.severity == .notice
+            case .passed: return false
+            }
+        }
+        guard !needle.isEmpty else { return scoped }
+        return scoped.filter { group in
             group.check.title.lowercased().contains(needle)
                 || group.check.category.title.lowercased().contains(needle)
                 || group.findings.contains { ($0.url ?? "").lowercased().contains(needle) || ($0.detail ?? "").lowercased().contains(needle) }
@@ -285,13 +312,39 @@ final class AuditModel: ObservableObject {
         }
     }
 
-    /// Pages with the most to fix first.
+    /// Pages in the chosen order; by default, the ones with the most to fix first.
     func sortedPages(of report: Report) -> [PageSummary] {
         let counts = Dictionary(report.findings.compactMap(\.url).map { ($0, 1) }, uniquingKeysWith: +)
+        func weight(_ page: PageSummary) -> Double {
+            switch pageSort {
+            case .issues: return Double(counts[page.url] ?? 0)
+            case .slowest: return Double(page.milliseconds)
+            case .thinnest: return -Double(page.words)
+            case .deepest: return Double(page.depth ?? -1)
+            case .path: return 0
+            }
+        }
         return report.pages.enumerated().sorted { a, b in
-            let x = counts[a.element.url] ?? 0, y = counts[b.element.url] ?? 0
+            if pageSort == .path { return a.element.url < b.element.url }
+            let x = weight(a.element), y = weight(b.element)
             return x != y ? x > y : a.offset < b.offset
         }.map(\.element)
+    }
+
+    /// Where the selection sits in the list on screen, for "3 of 20".
+    var position: (index: Int, count: Int)? {
+        switch tab {
+        case .issues:
+            let ids = orderedGroups.map(\.id)
+            guard let index = selectedIssue.flatMap({ ids.firstIndex(of: $0) }) else { return nil }
+            return (index + 1, ids.count)
+        case .pages:
+            let urls = visiblePages.map(\.url)
+            guard let index = selectedPage.flatMap({ urls.firstIndex(of: $0) }) else { return nil }
+            return (index + 1, urls.count)
+        default:
+            return nil
+        }
     }
 
     var visiblePages: [PageSummary] {

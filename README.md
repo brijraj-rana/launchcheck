@@ -98,6 +98,8 @@ cd launchcheck
 
 Type a site and press Return. Sites you have checked stay in the sidebar with their last score; click one to reopen its report without checking again. Point at a site and press the × to delete it, or use the menu beside “Sites” to delete them all. The Changes tab lists the checks kept for a site: open an older one, or delete any of them. The slider icon in the address bar sets how many pages to read (50, 200 or 1,000), whether links to other sites are followed, and whether images are weighed.
 
+In Issues, the counts above the list are filters: everything, each level, or what passed. In Pages, the sort button orders the list by most to fix, slowest, fewest words, most clicks from home or address, and each row shows the figure it is sorted by. Both inspectors say where you are in the list (“2 of 48”) and step either way.
+
 | Shortcut | Does |
 |---|---|
 | Return | Check the site |

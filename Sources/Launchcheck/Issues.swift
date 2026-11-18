@@ -40,12 +40,17 @@ struct IssuesTab: View {
             }
             .padding(.horizontal, 16)
             .frame(height: 48)
+            scopes
+                .padding(.horizontal, 16)
+                .padding(.bottom, 10)
             Tone.hairline.frame(height: 1)
             Scroller(target: model.selectedIssue) {
                 VStack(alignment: .leading, spacing: 18) {
                     let groups = model.visibleGroups
-                    if groups.isEmpty {
-                        Text(model.search.isEmpty ? "Every check passed." : "No issue matches “\(model.search)”.")
+                    if model.scope == .passed {
+                        passed
+                    } else if groups.isEmpty {
+                        Text(model.search.isEmpty ? (model.scope == .all ? "Every check passed." : "Nothing at this level.") : "No issue matches “\(model.search)”.")
                             .font(.system(size: 12.5))
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 8)
@@ -71,7 +76,6 @@ struct IssuesTab: View {
                             }
                         }
                     }
-                    if model.search.isEmpty, !report.passedChecks.isEmpty { passed }
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 14)
@@ -94,35 +98,65 @@ struct IssuesTab: View {
         }
     }
 
+    /// Every check that ran and found nothing, said the way it reads when it is true.
     private var passed: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Button { Motion.run(Motion.move) { model.showsPassed.toggle() } } label: {
-                HStack(spacing: 6) {
-                    SectionLabel(text: "Passed", count: report.passedChecks.count)
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 8, weight: .bold))
-                        .foregroundStyle(.tertiary)
-                        .rotationEffect(.degrees(model.showsPassed ? 90 : 0))
-                    Spacer()
-                }
-                .frame(height: 22)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .padding(.horizontal, 8)
-            if model.showsPassed {
-                VStack(alignment: .leading, spacing: 0) {
-                    ForEach(report.passedChecks, id: \.id) { check in
-                        HStack(spacing: 10) {
-                            Mark(.passed)
-                            Text(check.passed).font(.system(size: 12.5)).foregroundStyle(.secondary).lineLimit(1)
-                        }
-                        .frame(height: 26)
+        let needle = model.search.trimmingCharacters(in: .whitespaces).lowercased()
+        let checks = report.passedChecks.filter { needle.isEmpty || $0.passed.lowercased().contains(needle) || $0.category.title.lowercased().contains(needle) }
+        return VStack(alignment: .leading, spacing: 4) {
+            SectionLabel(text: "Passed", count: checks.count).padding(.horizontal, 8)
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(checks, id: \.id) { check in
+                    HStack(spacing: 10) {
+                        Mark(.passed)
+                        Text(check.passed).font(.system(size: 13)).lineLimit(1)
+                        Spacer(minLength: 10)
+                        Text(check.category.title).font(.system(size: 11.5)).foregroundStyle(.secondary).lineLimit(1)
                     }
+                    .frame(height: 30)
                 }
-                .padding(.horizontal, 8)
-                .transition(.soft)
             }
+            .padding(.horizontal, 8)
+        }
+    }
+
+    /// Counts by level, each one a filter. The whole report in five numbers.
+    private var scopes: some View {
+        let options: [(AuditModel.Scope, Mark.Kind, String, Int)] = [
+            (.all, .none, "All", report.groups.count),
+            (.error, .error, "Fix before launch", report.count(.error)),
+            (.warning, .warning, "Should fix", report.count(.warning)),
+            (.notice, .notice, "Worth a look", report.count(.notice)),
+            (.passed, .passed, "Passed", report.passedChecks.count),
+        ]
+        return HStack(spacing: 6) {
+            ForEach(options, id: \.0) { scope, mark, title, count in
+                Button {
+                    model.scope = scope
+                    if scope != .passed, !model.orderedGroups.contains(where: { $0.id == model.selectedIssue }) {
+                        model.selectedIssue = model.orderedGroups.first?.id
+                    }
+                } label: {
+                    HStack(spacing: 5) {
+                        if mark == .none {
+                            Text(title).font(.system(size: 11.5, weight: .medium))
+                        } else {
+                            Mark(mark)
+                        }
+                        Text("\(count)").font(.system(size: 11.5, weight: .medium).monospacedDigit())
+                            .foregroundStyle(model.scope == scope ? .primary : .secondary)
+                    }
+                    .padding(.horizontal, 8)
+                    .frame(height: 24)
+                    .background(Capsule().fill(model.scope == scope ? Tone.lift : Color.clear))
+                    .overlay(Capsule().strokeBorder(Tone.hairline).opacity(model.scope == scope ? 0 : 1))
+                    .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .help(title)
+                .accessibilityLabel("\(title), \(count)")
+                .accessibilityAddTraits(model.scope == scope ? .isSelected : [])
+            }
+            Spacer(minLength: 0)
         }
     }
 }
@@ -175,6 +209,8 @@ struct IssueInspector: View {
                             .foregroundStyle(check.severity == .notice ? AnyShapeStyle(.secondary) : AnyShapeStyle(Tone.of(check.severity)))
                         Text("·").foregroundStyle(.tertiary)
                         Text(check.category.title).font(.system(size: 11.5)).foregroundStyle(.secondary)
+                        Spacer(minLength: 8)
+                        Stepper(model: model)
                     }
                     Text(check.title)
                         .font(.system(size: 19, weight: .semibold))
