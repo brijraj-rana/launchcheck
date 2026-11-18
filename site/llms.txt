@@ -4,5 +4,5 @@
 
 ## Pages
 
-- [Launchcheck](https://brijraj-02.github.io/launchcheck/): what it checks, how the report reads, and where to download it
-- [Source and documentation](https://github.com/BRIJRAJ-02/launchcheck): the README, the full list of checks and how it is built
+- [Launchcheck](https://brijraj-rana.github.io/launchcheck/): what it checks, how the report reads, and where to download it
+- [Source and documentation](https://github.com/brijraj-rana/launchcheck): the README, the full list of checks and how it is built

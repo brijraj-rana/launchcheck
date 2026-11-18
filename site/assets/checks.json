@@ -1,996 +1,996 @@
 [
   {
+    "why" : "A leftover “Disallow: /” keeps the whole site out of search. Remove it from robots.txt.",
     "webflow" : "Site settings → SEO → robots.txt. Delete the “Disallow: /” line, save and publish.",
+    "severity" : "error",
     "id" : "robots.blocks-all",
+    "title" : "robots.txt blocks every crawler",
     "passed" : "robots.txt lets crawlers in",
     "fix" : "Remove the “Disallow: /” line under “User-agent: *” in robots.txt and publish.",
-    "area" : "Indexing",
-    "why" : "A leftover “Disallow: /” keeps the whole site out of search. Remove it from robots.txt.",
-    "title" : "robots.txt blocks every crawler",
-    "severity" : "error"
-  },
-  {
-    "fix" : "Make /robots.txt answer with the file, or with a plain 404 if there is none. This is a server or hosting setting.",
-    "why" : "Crawlers treat a server error on robots.txt as “stay out of everything”. It must answer with the file or a plain 404.",
-    "title" : "robots.txt answers with a server error",
-    "passed" : "robots.txt answers properly",
-    "severity" : "error",
-    "id" : "robots.error",
     "area" : "Indexing"
   },
   {
-    "severity" : "error",
+    "why" : "Crawlers treat a server error on robots.txt as “stay out of everything”. It must answer with the file or a plain 404.",
+    "passed" : "robots.txt answers properly",
+    "id" : "robots.error",
+    "fix" : "Make /robots.txt answer with the file, or with a plain 404 if there is none. This is a server or hosting setting.",
     "area" : "Indexing",
-    "webflow" : "Page settings → SEO settings → turn Sitemap indexing on. If the tag is still there, look for a robots meta tag in Page settings → Custom code.",
-    "fix" : "Remove the noindex from the robots meta tag or the X-Robots-Tag header on every page that should be found.",
-    "why" : "A noindex tag or header tells search engines to drop the page. It is often left on from staging.",
-    "passed" : "No page is hidden from search engines",
+    "severity" : "error",
+    "title" : "robots.txt answers with a server error"
+  },
+  {
+    "severity" : "error",
     "title" : "Pages are set to noindex",
+    "fix" : "Remove the noindex from the robots meta tag or the X-Robots-Tag header on every page that should be found.",
+    "webflow" : "Page settings → SEO settings → turn Sitemap indexing on. If the tag is still there, look for a robots meta tag in Page settings → Custom code.",
+    "passed" : "No page is hidden from search engines",
+    "why" : "A noindex tag or header tells search engines to drop the page. It is often left on from staging.",
+    "area" : "Indexing",
     "id" : "page.noindex"
   },
   {
+    "id" : "sitemap.broken",
+    "title" : "Sitemap lists pages that do not load",
+    "severity" : "error",
     "webflow" : "Site settings → SEO → Sitemap. With auto-generate on, publish again to rebuild it. A sitemap written by hand has to be edited by hand.",
     "fix" : "Remove the dead addresses from the sitemap, or restore the pages or redirect them.",
+    "area" : "Sitemap",
     "passed" : "Every sitemap page loads",
-    "area" : "Sitemap",
-    "severity" : "error",
-    "title" : "Sitemap lists pages that do not load",
-    "why" : "Search engines are being sent to pages that return an error. Remove them from the sitemap or restore the pages.",
-    "id" : "sitemap.broken"
+    "why" : "Search engines are being sent to pages that return an error. Remove them from the sitemap or restore the pages."
   },
   {
-    "title" : "Sitemap lists pages on another domain",
+    "severity" : "error",
+    "passed" : "Sitemap stays on this domain",
     "webflow" : "Site settings → Publishing → Production. Set the live domain as the default, then publish so the sitemap is rebuilt with it.",
-    "why" : "A sitemap should only list this site's own pages. Other domains here usually mean it was generated on staging.",
-    "severity" : "error",
-    "fix" : "Generate the sitemap on the live domain so every address in it belongs to this site.",
     "id" : "sitemap.offsite",
+    "fix" : "Generate the sitemap on the live domain so every address in it belongs to this site.",
+    "why" : "A sitemap should only list this site's own pages. Other domains here usually mean it was generated on staging.",
     "area" : "Sitemap",
-    "passed" : "Sitemap stays on this domain"
+    "title" : "Sitemap lists pages on another domain"
   },
   {
-    "id" : "sitemap.too-big",
+    "why" : "Search engines stop reading a sitemap file at 50,000 addresses. Split it and list the parts in a sitemap index.",
+    "severity" : "error",
     "area" : "Sitemap",
     "title" : "A sitemap file lists more than 50,000 pages",
-    "passed" : "Sitemap files are within the size limit",
-    "severity" : "error",
-    "why" : "Search engines stop reading a sitemap file at 50,000 addresses. Split it and list the parts in a sitemap index.",
-    "fix" : "Split the sitemap into files of at most 50,000 addresses and list them in a sitemap index."
+    "id" : "sitemap.too-big",
+    "fix" : "Split the sitemap into files of at most 50,000 addresses and list them in a sitemap index.",
+    "passed" : "Sitemap files are within the size limit"
   },
   {
+    "area" : "Indexing",
     "id" : "staging.leftovers",
-    "severity" : "error",
-    "why" : "Links, canonicals or share images that point at a staging address will send visitors and search engines to the wrong site.",
     "fix" : "Replace every staging address with the live one: canonicals, share images, og:url and links typed in by hand.",
+    "title" : "Pages still point at a staging domain",
+    "why" : "Links, canonicals or share images that point at a staging address will send visitors and search engines to the wrong site.",
     "passed" : "No links to staging domains",
     "webflow" : "Site settings → SEO → Global canonical tag URL: enter the live domain. For links, pick the page in the link settings instead of pasting a webflow.io address.",
-    "title" : "Pages still point at a staging domain",
-    "area" : "Indexing"
+    "severity" : "error"
   },
   {
     "id" : "canonical.offsite",
-    "fix" : "Point each canonical at the page's own address on this domain.",
-    "passed" : "Canonical tags stay on this domain",
     "why" : "A canonical on another domain tells search engines the real page lives there, and this one gets dropped.",
-    "title" : "Canonical tags point to another domain",
-    "area" : "Indexing",
     "webflow" : "Site settings → SEO → Global canonical tag URL: enter the live domain, with https and without a trailing slash.",
-    "severity" : "error"
+    "title" : "Canonical tags point to another domain",
+    "severity" : "error",
+    "passed" : "Canonical tags stay on this domain",
+    "area" : "Indexing",
+    "fix" : "Point each canonical at the page's own address on this domain."
+  },
+  {
+    "id" : "title.missing",
+    "title" : "Pages have no title",
+    "why" : "The title is the headline of a search result. Without one, search engines make something up.",
+    "webflow" : "Page settings → SEO settings → Title tag. For Collection pages, set it once on the template page and build it from a field.",
+    "passed" : "Every page has a title",
+    "severity" : "error",
+    "fix" : "Give every page a title that says what the page is, in about 60 characters.",
+    "area" : "Content"
   },
   {
     "severity" : "error",
-    "passed" : "Every page has a title",
-    "fix" : "Give every page a title that says what the page is, in about 60 characters.",
-    "title" : "Pages have no title",
-    "webflow" : "Page settings → SEO settings → Title tag. For Collection pages, set it once on the template page and build it from a field.",
-    "area" : "Content",
-    "id" : "title.missing",
-    "why" : "The title is the headline of a search result. Without one, search engines make something up."
-  },
-  {
     "title" : "Broken links between pages",
     "passed" : "No broken links between pages",
-    "id" : "links.internal",
-    "fix" : "Correct each link, or redirect the missing address to the page that replaced it.",
     "area" : "Links",
+    "fix" : "Correct each link, or redirect the missing address to the page that replaced it.",
+    "id" : "links.internal",
     "webflow" : "Fix the link where it is used. If the address used to exist, add it under Site settings → Publishing → 301 redirects.",
-    "why" : "These links go to pages on this site that do not load.",
-    "severity" : "error"
+    "why" : "These links go to pages on this site that do not load."
   },
   {
     "severity" : "error",
-    "id" : "images.broken",
-    "title" : "Images do not load",
-    "fix" : "Upload the missing files again, or correct the addresses the pages ask for.",
-    "passed" : "Every image loads",
+    "area" : "Images",
     "why" : "These image addresses return an error, so visitors see a gap or a broken icon.",
-    "area" : "Images"
+    "title" : "Images do not load",
+    "passed" : "Every image loads",
+    "id" : "images.broken",
+    "fix" : "Upload the missing files again, or correct the addresses the pages ask for."
   },
   {
-    "severity" : "error",
-    "fix" : "Point og:image at an image that loads, using its full address.",
-    "title" : "Share images do not load",
     "why" : "The og:image address returns an error, so shared links will show no picture.",
-    "id" : "social.image.broken",
+    "severity" : "error",
+    "passed" : "Share images load",
     "area" : "Sharing",
-    "webflow" : "Page settings → Open Graph settings → Open Graph image URL.",
-    "passed" : "Share images load"
+    "fix" : "Point og:image at an image that loads, using its full address.",
+    "id" : "social.image.broken",
+    "title" : "Share images do not load",
+    "webflow" : "Page settings → Open Graph settings → Open Graph image URL."
   },
   {
-    "id" : "sitemap.missing",
-    "webflow" : "Site settings → SEO → Sitemap. Turn on Auto-generate sitemap and publish.",
-    "passed" : "Sitemap found",
     "title" : "No sitemap found",
-    "fix" : "Publish a sitemap at /sitemap.xml that lists every page meant to be found.",
+    "webflow" : "Site settings → SEO → Sitemap. Turn on Auto-generate sitemap and publish.",
     "severity" : "warning",
+    "passed" : "Sitemap found",
+    "id" : "sitemap.missing",
+    "why" : "A sitemap tells search engines which pages exist. Publish one at /sitemap.xml and name it in robots.txt.",
     "area" : "Sitemap",
-    "why" : "A sitemap tells search engines which pages exist. Publish one at /sitemap.xml and name it in robots.txt."
+    "fix" : "Publish a sitemap at /sitemap.xml that lists every page meant to be found."
   },
   {
-    "passed" : "No redirects in the sitemap",
-    "area" : "Sitemap",
-    "id" : "sitemap.redirects",
-    "why" : "List the final address of each page, not one that redirects to it.",
     "severity" : "warning",
     "fix" : "List the address each redirect ends at, and drop the one that redirects.",
-    "title" : "Sitemap lists pages that redirect"
-  },
-  {
-    "id" : "sitemap.blocked",
-    "title" : "Sitemap lists pages that robots.txt blocks",
-    "severity" : "warning",
-    "why" : "The sitemap invites crawlers to pages robots.txt turns them away from. Decide which one is right.",
-    "fix" : "Either take the pages out of the sitemap or remove the robots.txt rule that blocks them.",
-    "passed" : "robots.txt blocks nothing in the sitemap",
-    "area" : "Sitemap"
-  },
-  {
-    "title" : "Sitemap lists pages whose canonical is another page",
+    "passed" : "No redirects in the sitemap",
+    "title" : "Sitemap lists pages that redirect",
     "area" : "Sitemap",
-    "why" : "A sitemap should list the canonical address of each page. These pages say the real one is elsewhere.",
+    "why" : "List the final address of each page, not one that redirects to it.",
+    "id" : "sitemap.redirects"
+  },
+  {
+    "title" : "Sitemap lists pages that robots.txt blocks",
+    "why" : "The sitemap invites crawlers to pages robots.txt turns them away from. Decide which one is right.",
+    "severity" : "warning",
+    "id" : "sitemap.blocked",
+    "fix" : "Either take the pages out of the sitemap or remove the robots.txt rule that blocks them.",
+    "area" : "Sitemap",
+    "passed" : "robots.txt blocks nothing in the sitemap"
+  },
+  {
     "fix" : "List only canonical addresses in the sitemap, or correct the canonical tags if they are the mistake.",
-    "id" : "sitemap.noncanonical",
     "passed" : "Every sitemap page is its own canonical",
+    "severity" : "warning",
+    "why" : "A sitemap should list the canonical address of each page. These pages say the real one is elsewhere.",
+    "id" : "sitemap.noncanonical",
+    "area" : "Sitemap",
+    "title" : "Sitemap lists pages whose canonical is another page"
+  },
+  {
+    "id" : "page.orphan",
+    "title" : "Pages that nothing links to",
+    "passed" : "Every page is linked from another page",
+    "fix" : "Link to each page from somewhere a visitor would look for it: the navigation, the footer or a related page.",
+    "area" : "Links",
+    "why" : "These pages are in the sitemap, but no page that was read links to them. Visitors cannot reach them and search engines give them little weight.",
     "severity" : "warning"
   },
   {
-    "severity" : "warning",
-    "area" : "Links",
-    "passed" : "Every page is linked from another page",
-    "why" : "These pages are in the sitemap, but no page that was read links to them. Visitors cannot reach them and search engines give them little weight.",
-    "fix" : "Link to each page from somewhere a visitor would look for it: the navigation, the footer or a related page.",
-    "id" : "page.orphan",
-    "title" : "Pages that nothing links to"
-  },
-  {
-    "id" : "content.js-shell",
-    "fix" : "Send the page's content in the HTML itself, by rendering it on the server or building it ahead of time.",
-    "severity" : "warning",
-    "passed" : "Pages carry their content in the HTML",
     "why" : "The HTML the server sends has almost no text, only a mount point for a script. Crawlers and AI assistants that do not run JavaScript see a blank page.",
+    "severity" : "warning",
+    "fix" : "Send the page's content in the HTML itself, by rendering it on the server or building it ahead of time.",
     "title" : "Pages are empty until JavaScript runs",
+    "passed" : "Pages carry their content in the HTML",
+    "id" : "content.js-shell",
     "area" : "Indexing"
   },
   {
     "severity" : "warning",
-    "title" : "Pages repeat a tag that should appear once",
-    "why" : "With two titles, descriptions or canonicals in one page, it is a toss-up which one a search engine reads.",
-    "fix" : "Keep one title, one meta description and one canonical per page, and delete the extras.",
     "id" : "head.duplicates",
     "area" : "Content",
+    "title" : "Pages repeat a tag that should appear once",
+    "fix" : "Keep one title, one meta description and one canonical per page, and delete the extras.",
     "passed" : "No repeated title, description or canonical tags",
-    "webflow" : "Webflow writes these tags from the SEO settings. Delete the copy pasted into Page settings → Custom code → Inside <head> tag, or Site settings → Custom code → Head code when it is on every page."
+    "webflow" : "Webflow writes these tags from the SEO settings. Delete the copy pasted into Page settings → Custom code → Inside <head> tag, or Site settings → Custom code → Head code when it is on every page.",
+    "why" : "With two titles, descriptions or canonicals in one page, it is a toss-up which one a search engine reads."
   },
   {
-    "why" : "Pages with the same title compete with each other and look identical in search results.",
     "severity" : "warning",
-    "id" : "title.duplicate",
     "title" : "Pages share the same title",
-    "fix" : "Write a title for each page that only that page could have.",
-    "area" : "Content",
+    "webflow" : "Page settings → SEO settings → Title tag. For Collection pages, set it once on the template page and build it from a field.",
     "passed" : "Every title is unique",
-    "webflow" : "Page settings → SEO settings → Title tag. For Collection pages, set it once on the template page and build it from a field."
+    "why" : "Pages with the same title compete with each other and look identical in search results.",
+    "id" : "title.duplicate",
+    "fix" : "Write a title for each page that only that page could have.",
+    "area" : "Content"
   },
   {
-    "title" : "Pages have no meta description",
     "webflow" : "Page settings → SEO settings → Meta description. For Collection pages, set it once on the template page and build it from a field.",
-    "why" : "The description is the text under the title in a search result. Without one, search engines pick a snippet themselves.",
-    "passed" : "Every page has a meta description",
     "area" : "Content",
     "severity" : "warning",
+    "passed" : "Every page has a meta description",
+    "title" : "Pages have no meta description",
+    "why" : "The description is the text under the title in a search result. Without one, search engines pick a snippet themselves.",
     "fix" : "Write a description of 50 to 160 characters for each page.",
     "id" : "description.missing"
   },
   {
-    "fix" : "Write a description for each page that says what is on that page.",
-    "webflow" : "Page settings → SEO settings → Meta description. For Collection pages, set it once on the template page and build it from a field.",
-    "title" : "Pages share the same meta description",
     "id" : "description.duplicate",
+    "fix" : "Write a description for each page that says what is on that page.",
     "area" : "Content",
-    "passed" : "Every meta description is unique",
+    "why" : "A description copied across pages says nothing about any one of them.",
     "severity" : "warning",
-    "why" : "A description copied across pages says nothing about any one of them."
+    "title" : "Pages share the same meta description",
+    "passed" : "Every meta description is unique",
+    "webflow" : "Page settings → SEO settings → Meta description. For Collection pages, set it once on the template page and build it from a field."
   },
   {
-    "severity" : "warning",
-    "why" : "A canonical tag names the one true address of a page, so tracking parameters and duplicates do not split its ranking.",
+    "area" : "Indexing",
+    "webflow" : "Site settings → SEO → Global canonical tag URL: enter the live domain. Webflow then adds a canonical to every page.",
     "title" : "Pages have no canonical tag",
     "fix" : "Add a canonical tag to every page, pointing at the page's own address.",
-    "area" : "Indexing",
+    "severity" : "warning",
     "id" : "canonical.missing",
-    "webflow" : "Site settings → SEO → Global canonical tag URL: enter the live domain. Webflow then adds a canonical to every page.",
+    "why" : "A canonical tag names the one true address of a page, so tracking parameters and duplicates do not split its ranking.",
     "passed" : "Every page has a canonical tag"
   },
   {
-    "title" : "Pages have no H1",
-    "webflow" : "Select the heading on the canvas and change its tag in the Settings panel. Choose H1 for the main one.",
-    "fix" : "Make the main heading of each page an H1.",
+    "why" : "The H1 is the page's main heading, for readers and search engines alike.",
     "passed" : "Every page has an H1",
     "severity" : "warning",
-    "why" : "The H1 is the page's main heading, for readers and search engines alike.",
+    "title" : "Pages have no H1",
+    "fix" : "Make the main heading of each page an H1.",
     "area" : "Content",
+    "webflow" : "Select the heading on the canvas and change its tag in the Settings panel. Choose H1 for the main one.",
     "id" : "h1.missing"
   },
   {
-    "severity" : "warning",
-    "why" : "Without a charset, browsers guess, and accented letters and symbols can turn into gibberish.",
     "fix" : "Add <meta charset=\"utf-8\"> as the first thing in the head.",
-    "passed" : "Every page declares a character set",
     "id" : "charset.missing",
+    "severity" : "warning",
     "title" : "Pages do not declare a character set",
-    "area" : "Content"
+    "why" : "Without a charset, browsers guess, and accented letters and symbols can turn into gibberish.",
+    "area" : "Content",
+    "passed" : "Every page declares a character set"
   },
   {
-    "passed" : "No page is set to nofollow",
-    "id" : "page.nofollow",
-    "webflow" : "Look for a robots meta tag in Page settings → Custom code → Inside <head> tag, or Site settings → Custom code → Head code when it is on every page.",
+    "title" : "Pages tell crawlers not to follow their links",
     "area" : "Indexing",
     "why" : "A page-level nofollow stops search engines passing through to the pages it links to.",
-    "title" : "Pages tell crawlers not to follow their links",
+    "passed" : "No page is set to nofollow",
     "severity" : "warning",
-    "fix" : "Remove nofollow from the robots meta tag or the X-Robots-Tag header."
+    "webflow" : "Look for a robots meta tag in Page settings → Custom code → Inside <head> tag, or Site settings → Custom code → Head code when it is on every page.",
+    "fix" : "Remove nofollow from the robots meta tag or the X-Robots-Tag header.",
+    "id" : "page.nofollow"
   },
   {
-    "area" : "Links",
+    "severity" : "warning",
     "fix" : "Remove the meta refresh tag and redirect the address on the server with a 301.",
+    "area" : "Links",
+    "webflow" : "Delete the tag from the page's custom code and add the address under Site settings → Publishing → 301 redirects.",
     "passed" : "No meta refresh redirects",
     "id" : "meta.refresh",
-    "why" : "A meta refresh is a slow, unreliable redirect. Use a server-side 301 instead.",
-    "webflow" : "Delete the tag from the page's custom code and add the address under Site settings → Publishing → 301 redirects.",
     "title" : "Pages redirect with a meta refresh",
-    "severity" : "warning"
+    "why" : "A meta refresh is a slow, unreliable redirect. Use a server-side 301 instead."
   },
   {
-    "title" : "Redirects that pass through more than one hop",
-    "passed" : "No redirect chains",
+    "severity" : "warning",
     "why" : "Each extra hop slows the visitor down and wastes crawl budget. Point the first address straight at the last.",
-    "fix" : "Change the first redirect so it points straight at the final address.",
+    "passed" : "No redirect chains",
     "id" : "redirect.chain",
-    "severity" : "warning",
+    "area" : "Links",
+    "fix" : "Change the first redirect so it points straight at the final address.",
     "webflow" : "Site settings → Publishing → 301 redirects. Edit the rule for the first address so its target is the last one.",
-    "area" : "Links"
+    "title" : "Redirects that pass through more than one hop"
   },
   {
-    "fix" : "Give each link words, or an aria-label when it only holds an icon.",
-    "area" : "Links",
-    "id" : "links.empty",
-    "why" : "A link with no words and no image description tells neither a screen reader nor a search engine where it leads.",
-    "title" : "Links have no text",
     "severity" : "warning",
+    "area" : "Links",
+    "why" : "A link with no words and no image description tells neither a screen reader nor a search engine where it leads.",
+    "fix" : "Give each link words, or an aria-label when it only holds an icon.",
+    "webflow" : "Select the link, open the Settings panel and add a custom attribute named aria-label that says where it goes.",
+    "title" : "Links have no text",
     "passed" : "Every link says where it goes",
-    "webflow" : "Select the link, open the Settings panel and add a custom attribute named aria-label that says where it goes."
+    "id" : "links.empty"
   },
   {
     "title" : "Pages have no share image",
-    "passed" : "Every page has a share image",
+    "id" : "social.image.missing",
+    "severity" : "warning",
     "area" : "Sharing",
     "webflow" : "Page settings → Open Graph settings → Open Graph image URL.",
-    "id" : "social.image.missing",
+    "passed" : "Every page has a share image",
     "fix" : "Add an og:image to every page: 1200 by 630 pixels works everywhere.",
-    "severity" : "warning",
     "why" : "Without an og:image, links shared on social apps and in chats show a blank card."
   },
   {
+    "severity" : "warning",
+    "why" : "Alt text is what screen readers speak and what search engines read. Decorative images should have an empty alt, not a missing one.",
+    "area" : "Images",
     "id" : "images.alt",
-    "title" : "Images have no alt text",
     "passed" : "Every image has an alt attribute",
     "fix" : "Describe each image in a short phrase. Give purely decorative images an empty alt.",
     "webflow" : "Select the image, open Image settings and fill in Alt text. Setting it on the file in the Assets panel covers every place the image is used.",
-    "severity" : "warning",
-    "why" : "Alt text is what screen readers speak and what search engines read. Decorative images should have an empty alt, not a missing one.",
-    "area" : "Images"
+    "title" : "Images have no alt text"
   },
   {
-    "passed" : "No image is over 500 KB",
-    "why" : "Images this large slow the page noticeably, most of all on phones. Resize or recompress them.",
-    "severity" : "warning",
-    "title" : "Images over 500 KB",
-    "id" : "images.heavy",
-    "area" : "Images",
     "fix" : "Resize each image to the size it is shown at and save it as WebP or AVIF.",
-    "webflow" : "Assets panel → select the image → Compress, which converts it to WebP or AVIF. Resize very large originals before uploading."
+    "passed" : "No image is over 500 KB",
+    "severity" : "warning",
+    "area" : "Images",
+    "webflow" : "Assets panel → select the image → Compress, which converts it to WebP or AVIF. Resize very large originals before uploading.",
+    "why" : "Images this large slow the page noticeably, most of all on phones. Resize or recompress them.",
+    "id" : "images.heavy",
+    "title" : "Images over 500 KB"
   },
   {
-    "title" : "Pages have no viewport tag",
-    "area" : "Content",
     "passed" : "Every page has a viewport tag",
-    "fix" : "Add <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"> to the head.",
+    "title" : "Pages have no viewport tag",
     "why" : "Without a viewport tag the page renders zoomed out on phones, and Google indexes the mobile version.",
-    "id" : "viewport.missing",
-    "severity" : "warning"
+    "fix" : "Add <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"> to the head.",
+    "severity" : "warning",
+    "area" : "Content",
+    "id" : "viewport.missing"
   },
   {
+    "severity" : "warning",
     "title" : "Broken links to other sites",
     "passed" : "No broken links to other sites",
-    "severity" : "warning",
-    "why" : "These links go to pages on other sites that no longer exist.",
     "area" : "Links",
     "fix" : "Link to where the page moved, or remove the link.",
-    "id" : "links.external"
+    "id" : "links.external",
+    "why" : "These links go to pages on other sites that no longer exist."
   },
   {
+    "fix" : "Change each http:// address to https://, or host the file yourself if its server has no https.",
+    "passed" : "Nothing loads over plain http",
     "severity" : "warning",
     "area" : "Security",
-    "fix" : "Change each http:// address to https://, or host the file yourself if its server has no https.",
     "title" : "Pages load files over plain http",
-    "passed" : "Nothing loads over plain http",
     "why" : "Browsers block or flag http files on an https page.",
     "id" : "mixed.content"
   },
   {
-    "area" : "Content",
     "passed" : "No placeholder text",
+    "why" : "“Lorem ipsum” is still on the page.",
+    "severity" : "warning",
+    "area" : "Content",
     "title" : "Placeholder text left in",
     "fix" : "Replace the placeholder with real words, or delete the element.",
-    "id" : "placeholder.text",
-    "severity" : "warning",
-    "why" : "“Lorem ipsum” is still on the page."
+    "id" : "placeholder.text"
   },
   {
-    "severity" : "warning",
-    "id" : "https.redirect",
-    "why" : "Visitors and links using the old http address should land on the secure one.",
-    "title" : "http:// does not redirect to https://",
-    "fix" : "Redirect every http:// address to its https:// twin with a 301. This is a hosting setting.",
     "passed" : "http:// redirects to https://",
-    "area" : "Security"
-  },
-  {
-    "fix" : "Send a Strict-Transport-Security header with a max-age of at least a year. This is a server or hosting setting.",
+    "area" : "Security",
+    "id" : "https.redirect",
     "severity" : "warning",
-    "why" : "This header tells browsers to always use https for the site, closing the gap where a first visit can be intercepted.",
-    "passed" : "Strict-Transport-Security is set",
-    "id" : "security.hsts",
-    "title" : "No Strict-Transport-Security header",
-    "area" : "Security"
+    "why" : "Visitors and links using the old http address should land on the secure one.",
+    "fix" : "Redirect every http:// address to its https:// twin with a 301. This is a hosting setting.",
+    "title" : "http:// does not redirect to https://"
   },
   {
-    "area" : "Indexing",
-    "why" : "Two addresses serving the same pages split links and ranking between them. Redirect one to the other.",
+    "area" : "Security",
+    "fix" : "Send a Strict-Transport-Security header with a max-age of at least a year. This is a server or hosting setting.",
+    "title" : "No Strict-Transport-Security header",
+    "passed" : "Strict-Transport-Security is set",
+    "why" : "This header tells browsers to always use https for the site, closing the gap where a first visit can be intercepted.",
+    "severity" : "warning",
+    "id" : "security.hsts"
+  },
+  {
     "fix" : "Pick www or non-www as the one address and redirect the other to it with a 301.",
     "passed" : "www and non-www resolve to one address",
-    "webflow" : "Site settings → Publishing → Production. Make one domain the default; Webflow redirects the others to it.",
-    "id" : "host.duplicate",
+    "area" : "Indexing",
     "severity" : "warning",
+    "id" : "host.duplicate",
+    "why" : "Two addresses serving the same pages split links and ranking between them. Redirect one to the other.",
+    "webflow" : "Site settings → Publishing → Production. Make one domain the default; Webflow redirects the others to it.",
     "title" : "The site answers on both www and non-www"
   },
   {
-    "area" : "Indexing",
     "passed" : "Missing pages return a 404",
+    "title" : "Missing pages do not return a 404",
     "fix" : "Make addresses that do not exist answer with a 404 status, not with a normal page.",
-    "id" : "notfound.soft",
-    "severity" : "warning",
     "why" : "An address that does not exist should say so with a 404 status, or search engines index error pages as real content.",
-    "title" : "Missing pages do not return a 404"
+    "id" : "notfound.soft",
+    "area" : "Indexing",
+    "severity" : "warning"
   },
   {
-    "severity" : "warning",
-    "area" : "Performance",
-    "id" : "page.too-large",
-    "passed" : "No page is over 2 MB of HTML",
-    "why" : "Googlebot reads only the first 2 MB of a page's HTML. Anything after that, including structured data, is not indexed.",
     "title" : "Pages over 2 MB of HTML",
-    "fix" : "Move inline scripts, styles and data out of the HTML into separate files."
+    "severity" : "warning",
+    "id" : "page.too-large",
+    "fix" : "Move inline scripts, styles and data out of the HTML into separate files.",
+    "area" : "Performance",
+    "why" : "Googlebot reads only the first 2 MB of a page's HTML. Anything after that, including structured data, is not indexed.",
+    "passed" : "No page is over 2 MB of HTML"
   },
   {
-    "id" : "perf.uncompressed",
-    "title" : "Pages are sent uncompressed",
-    "severity" : "warning",
     "area" : "Performance",
     "fix" : "Turn on gzip or Brotli for HTML on the server or the CDN.",
+    "why" : "Turning on gzip or Brotli on the server typically cuts HTML to a quarter of its size.",
+    "title" : "Pages are sent uncompressed",
     "passed" : "Pages are sent compressed",
-    "why" : "Turning on gzip or Brotli on the server typically cuts HTML to a quarter of its size."
+    "severity" : "warning",
+    "id" : "perf.uncompressed"
   },
   {
-    "webflow" : "The script is usually in Page settings → Custom code → Inside <head> tag, or Site settings → Custom code → Head code when it is on every page.",
+    "area" : "Structured data",
     "passed" : "Structured data parses",
-    "severity" : "warning",
-    "fix" : "Correct the JSON: look for a missing comma, quote or bracket, then run it through a validator.",
     "id" : "schema.invalid",
-    "why" : "A JSON-LD block with a syntax error is ignored entirely, along with any rich result it would have earned.",
     "title" : "Structured data that cannot be read",
-    "area" : "Structured data"
-  },
-  {
-    "fix" : "Add the properties named in the findings to the markup.",
     "severity" : "warning",
     "webflow" : "The script is usually in Page settings → Custom code → Inside <head> tag, or Site settings → Custom code → Head code when it is on every page.",
-    "passed" : "Structured data has its required properties",
-    "id" : "schema.incomplete",
+    "why" : "A JSON-LD block with a syntax error is ignored entirely, along with any rich result it would have earned.",
+    "fix" : "Correct the JSON: look for a missing comma, quote or bracket, then run it through a validator."
+  },
+  {
     "area" : "Structured data",
     "why" : "Without these properties the markup does not qualify for the rich result it describes.",
-    "title" : "Structured data is missing required properties"
+    "passed" : "Structured data has its required properties",
+    "fix" : "Add the properties named in the findings to the markup.",
+    "id" : "schema.incomplete",
+    "webflow" : "The script is usually in Page settings → Custom code → Inside <head> tag, or Site settings → Custom code → Head code when it is on every page.",
+    "title" : "Structured data is missing required properties",
+    "severity" : "warning"
   },
   {
     "webflow" : "The script is usually in Page settings → Custom code → Inside <head> tag, or Site settings → Custom code → Head code when it is on every page.",
-    "why" : "Values like “[Business Name]” were never filled in.",
     "passed" : "No placeholders in structured data",
-    "id" : "schema.placeholder",
     "title" : "Structured data still has template placeholders",
     "area" : "Structured data",
     "fix" : "Replace each bracketed placeholder with the real value.",
-    "severity" : "warning"
+    "why" : "Values like “[Business Name]” were never filled in.",
+    "severity" : "warning",
+    "id" : "schema.placeholder"
   },
   {
-    "area" : "AI search",
     "severity" : "warning",
+    "fix" : "Remove the Disallow rules for these crawlers from robots.txt, or allow them by name.",
     "passed" : "AI search crawlers are allowed",
     "id" : "ai.search-blocked",
     "webflow" : "Site settings → SEO → robots.txt. Remove the rules for these crawlers, save and publish.",
-    "fix" : "Remove the Disallow rules for these crawlers from robots.txt, or allow them by name.",
     "title" : "robots.txt blocks AI search crawlers",
-    "why" : "These crawlers fetch pages to answer questions in ChatGPT, Claude and Perplexity and to cite sources. Blocking them keeps the site out of those answers. Crawlers that only gather training data are a separate choice and are not flagged."
+    "why" : "These crawlers fetch pages to answer questions in ChatGPT, Claude and Perplexity and to cite sources. Blocking them keeps the site out of those answers. Crawlers that only gather training data are a separate choice and are not flagged.",
+    "area" : "AI search"
   },
   {
-    "title" : "llms.txt is not in the expected format",
     "passed" : "llms.txt is well formed",
+    "id" : "ai.llms-invalid",
+    "title" : "llms.txt is not in the expected format",
     "why" : "An llms.txt should open with a “# Title” line and list pages as Markdown links.",
     "severity" : "warning",
-    "fix" : "Start the file with a “# Title” line and list the pages that matter as Markdown links.",
     "area" : "AI search",
-    "id" : "ai.llms-invalid"
+    "fix" : "Start the file with a “# Title” line and list the pages that matter as Markdown links."
   },
   {
-    "id" : "hreflang.invalid",
-    "area" : "International",
-    "passed" : "Hreflang codes are valid",
+    "fix" : "Use a two-letter language code, with a two-letter region after a hyphen when one is needed, as in en-GB.",
     "severity" : "warning",
-    "why" : "The language must be a two-letter ISO 639-1 code and the region a two-letter ISO 3166-1 code, as in en-GB. Invalid tags are ignored.",
     "title" : "Hreflang tags use codes that do not exist",
-    "fix" : "Use a two-letter language code, with a two-letter region after a hyphen when one is needed, as in en-GB."
+    "passed" : "Hreflang codes are valid",
+    "why" : "The language must be a two-letter ISO 639-1 code and the region a two-letter ISO 3166-1 code, as in en-GB. Invalid tags are ignored.",
+    "id" : "hreflang.invalid",
+    "area" : "International"
   },
   {
-    "severity" : "warning",
-    "title" : "Hreflang sets do not include the page itself",
+    "id" : "hreflang.self",
     "why" : "Each page must list itself among its language versions, or the whole set can be disregarded.",
-    "fix" : "Add a hreflang tag on each page that points at the page itself.",
-    "area" : "International",
     "passed" : "Every hreflang set includes the page itself",
-    "id" : "hreflang.self"
+    "fix" : "Add a hreflang tag on each page that points at the page itself.",
+    "severity" : "warning",
+    "area" : "International",
+    "title" : "Hreflang sets do not include the page itself"
   },
   {
-    "fix" : "Correct the sitemap address in robots.txt or in the index, or publish the missing file.",
-    "id" : "sitemap.unreadable",
-    "why" : "robots.txt or a sitemap index points at a sitemap file that answers with an error or is not a sitemap. Pages listed only there go unannounced.",
-    "title" : "A sitemap that is named does not load",
     "passed" : "Every named sitemap loads",
     "area" : "Sitemap",
+    "title" : "A sitemap that is named does not load",
     "severity" : "warning",
-    "webflow" : "Site settings → SEO → robots.txt. Check the Sitemap line. With Auto-generate sitemap on, the file is at /sitemap.xml."
+    "fix" : "Correct the sitemap address in robots.txt or in the index, or publish the missing file.",
+    "webflow" : "Site settings → SEO → robots.txt. Check the Sitemap line. With Auto-generate sitemap on, the file is at /sitemap.xml.",
+    "id" : "sitemap.unreadable",
+    "why" : "robots.txt or a sitemap index points at a sitemap file that answers with an error or is not a sitemap. Pages listed only there go unannounced."
   },
   {
-    "why" : "Google draws a page before judging it. With the files that style and build it blocked, what it sees is a broken page.",
-    "passed" : "robots.txt lets crawlers load stylesheets and scripts",
-    "area" : "Indexing",
+    "severity" : "warning",
     "id" : "robots.blocks-assets",
+    "area" : "Indexing",
     "fix" : "Remove the Disallow rules that cover CSS and JavaScript files.",
     "webflow" : "Site settings → SEO → robots.txt. Remove the rules, save and publish.",
-    "title" : "robots.txt blocks stylesheets or scripts",
-    "severity" : "warning"
+    "passed" : "robots.txt lets crawlers load stylesheets and scripts",
+    "why" : "Google draws a page before judging it. With the files that style and build it blocked, what it sees is a broken page.",
+    "title" : "robots.txt blocks stylesheets or scripts"
   },
   {
     "fix" : "Point each canonical at the final address of a page that loads and may be indexed.",
-    "id" : "canonical.broken",
-    "area" : "Indexing",
+    "severity" : "warning",
     "passed" : "Canonical tags point at pages that load",
     "why" : "A canonical names the address to index. One that redirects, errors or is set to noindex leaves search engines to guess.",
-    "webflow" : "Site settings → SEO → Global canonical tag URL: enter the live domain exactly as it is served, with or without www.",
     "title" : "Canonical tags point at pages that redirect or do not load",
-    "severity" : "warning"
+    "webflow" : "Site settings → SEO → Global canonical tag URL: enter the live domain exactly as it is served, with or without www.",
+    "area" : "Indexing",
+    "id" : "canonical.broken"
   },
   {
-    "webflow" : "To drop a page, add its address under Site settings → Publishing → 301 redirects.",
-    "fix" : "Keep one of the pages and redirect the others to it, or give each page its own words.",
-    "severity" : "warning",
-    "passed" : "No two pages have the same text",
-    "area" : "Content",
-    "id" : "content.duplicate",
     "why" : "Two addresses carrying the same words compete with each other, and search engines keep only one of them.",
-    "title" : "Pages with exactly the same text"
+    "id" : "content.duplicate",
+    "severity" : "warning",
+    "title" : "Pages with exactly the same text",
+    "fix" : "Keep one of the pages and redirect the others to it, or give each page its own words.",
+    "area" : "Content",
+    "webflow" : "To drop a page, add its address under Site settings → Publishing → 301 redirects.",
+    "passed" : "No two pages have the same text"
   },
   {
+    "area" : "AI search",
     "fix" : "Correct or remove the dead links in /llms.txt.",
-    "id" : "ai.llms-links",
     "severity" : "warning",
     "title" : "llms.txt links to pages that do not load",
-    "passed" : "Every link in llms.txt loads",
-    "area" : "AI search",
-    "why" : "The file exists to point assistants at the pages that matter. A dead link there points them at nothing."
+    "why" : "The file exists to point assistants at the pages that matter. A dead link there points them at nothing.",
+    "id" : "ai.llms-links",
+    "passed" : "Every link in llms.txt loads"
   },
   {
     "id" : "hreflang.noncanonical",
     "passed" : "Hreflang tags are only on canonical pages",
+    "title" : "Hreflang tags sit on pages whose canonical is another page",
+    "fix" : "Put the hreflang tags on the canonical page, or correct the canonical if it is the mistake.",
     "area" : "International",
     "severity" : "warning",
-    "fix" : "Put the hreflang tags on the canonical page, or correct the canonical if it is the mistake.",
-    "why" : "Search engines read hreflang from the canonical page only. On a page that names another as its canonical, the tags are ignored.",
-    "title" : "Hreflang tags sit on pages whose canonical is another page"
+    "why" : "Search engines read hreflang from the canonical page only. On a page that names another as its canonical, the tags are ignored."
   },
   {
-    "fix" : "Point each hreflang link at the final address of a page that loads and is not set to noindex.",
     "area" : "International",
+    "title" : "Hreflang links point at pages that redirect, do not load or are noindex",
     "id" : "hreflang.target",
     "severity" : "warning",
     "why" : "Each language version has to be a page that loads and may be indexed, or that language drops out of the set.",
-    "title" : "Hreflang links point at pages that redirect, do not load or are noindex",
+    "fix" : "Point each hreflang link at the final address of a page that loads and is not set to noindex.",
     "passed" : "Hreflang links point at pages that load"
   },
   {
-    "area" : "International",
-    "title" : "Hreflang sets name a language twice",
     "fix" : "Keep one address for each language and region, and delete the other tag.",
-    "passed" : "Each language appears once in a hreflang set",
-    "id" : "hreflang.duplicate",
     "webflow" : "Webflow Localization writes hreflang tags itself. Delete any typed by hand in Page settings → Custom code → Inside <head> tag, or Site settings → Custom code → Head code when it is on every page.",
     "why" : "Two different pages claiming the same language and region leave search engines to pick one, or neither.",
+    "title" : "Hreflang sets name a language twice",
+    "id" : "hreflang.duplicate",
+    "passed" : "Each language appears once in a hreflang set",
+    "area" : "International",
     "severity" : "warning"
   },
   {
-    "severity" : "warning",
-    "id" : "hreflang.return",
-    "why" : "If page A names B as its translation, B must name A back. One-way links are ignored.",
-    "fix" : "Add the missing tag on the other page, so each language version names all the others.",
-    "title" : "Hreflang links are not returned",
     "passed" : "Hreflang links point both ways",
-    "area" : "International"
+    "area" : "International",
+    "fix" : "Add the missing tag on the other page, so each language version names all the others.",
+    "why" : "If page A names B as its translation, B must name A back. One-way links are ignored.",
+    "id" : "hreflang.return",
+    "title" : "Hreflang links are not returned",
+    "severity" : "warning"
   },
   {
     "fix" : "Publish a robots.txt that allows crawlers in and names the sitemap.",
-    "title" : "No robots.txt",
-    "passed" : "robots.txt found",
-    "area" : "Indexing",
     "why" : "Not required, but it is where crawlers look first and where the sitemap is announced.",
+    "area" : "Indexing",
+    "passed" : "robots.txt found",
+    "id" : "robots.missing",
     "webflow" : "Site settings → SEO → robots.txt. Enter the rules, save and publish.",
     "severity" : "notice",
-    "id" : "robots.missing"
+    "title" : "No robots.txt"
   },
   {
+    "area" : "Sitemap",
+    "title" : "robots.txt does not name the sitemap",
+    "severity" : "notice",
+    "passed" : "robots.txt names the sitemap",
+    "id" : "sitemap.undeclared",
+    "fix" : "Add a line to robots.txt: “Sitemap:” followed by the sitemap's full address.",
+    "webflow" : "Site settings → SEO → robots.txt. Add the Sitemap line, save and publish.",
+    "why" : "A “Sitemap:” line in robots.txt lets every crawler find it without being told."
+  },
+  {
+    "passed" : "Sitemap dates vary by page",
     "area" : "Sitemap",
     "severity" : "notice",
-    "fix" : "Add a line to robots.txt: “Sitemap:” followed by the sitemap's full address.",
-    "why" : "A “Sitemap:” line in robots.txt lets every crawler find it without being told.",
-    "title" : "robots.txt does not name the sitemap",
-    "webflow" : "Site settings → SEO → robots.txt. Add the Sitemap line, save and publish.",
-    "passed" : "robots.txt names the sitemap",
-    "id" : "sitemap.undeclared"
-  },
-  {
-    "area" : "Sitemap",
+    "id" : "sitemap.lastmod",
     "why" : "Identical dates mean the sitemap stamps the build time on everything, so search engines learn to ignore them.",
     "title" : "Every sitemap entry has the same last-modified date",
-    "id" : "sitemap.lastmod",
-    "severity" : "notice",
-    "fix" : "Write the date each page really changed, or leave lastmod out.",
-    "passed" : "Sitemap dates vary by page"
+    "fix" : "Write the date each page really changed, or leave lastmod out."
   },
   {
-    "id" : "sitemap.noindex",
-    "title" : "Sitemap lists pages set to noindex",
-    "fix" : "Take the noindex off the pages that should be found, and take the rest out of the sitemap.",
-    "webflow" : "Page settings → SEO settings → Sitemap indexing decides both at once for a page.",
     "area" : "Sitemap",
-    "passed" : "No noindex pages in the sitemap",
+    "id" : "sitemap.noindex",
+    "severity" : "notice",
+    "fix" : "Take the noindex off the pages that should be found, and take the rest out of the sitemap.",
+    "title" : "Sitemap lists pages set to noindex",
+    "webflow" : "Page settings → SEO settings → Sitemap indexing decides both at once for a page.",
     "why" : "A sitemap asks for pages to be indexed; noindex asks for the opposite. Remove one or the other.",
-    "severity" : "notice"
+    "passed" : "No noindex pages in the sitemap"
   },
   {
-    "title" : "Linked pages are missing from the sitemap",
+    "severity" : "notice",
     "why" : "These pages are linked from the site and load fine, but the sitemap does not mention them.",
     "fix" : "Add the pages to the sitemap, or regenerate it.",
-    "severity" : "notice",
-    "passed" : "Linked pages are all in the sitemap",
     "id" : "sitemap.incomplete",
+    "title" : "Linked pages are missing from the sitemap",
+    "passed" : "Linked pages are all in the sitemap",
     "area" : "Sitemap"
   },
   {
-    "passed" : "Every page is within three clicks of home",
-    "fix" : "Link to the page from somewhere nearer the home page: a hub page, the navigation or the footer.",
-    "severity" : "notice",
-    "id" : "page.deep",
     "why" : "The further a page is from the home page, the less often it is crawled and the less weight it carries.",
-    "title" : "Pages more than three clicks from the home page",
+    "passed" : "Every page is within three clicks of home",
+    "id" : "page.deep",
+    "fix" : "Link to the page from somewhere nearer the home page: a hub page, the navigation or the footer.",
+    "area" : "Links",
+    "severity" : "notice",
+    "title" : "Pages more than three clicks from the home page"
+  },
+  {
+    "fix" : "Change each link to the address the redirect ends at.",
+    "passed" : "Links between pages go straight there",
+    "id" : "links.redirect",
+    "severity" : "notice",
+    "title" : "Links between pages go through a redirect",
+    "why" : "Link to the final address. It saves visitors a round trip and keeps the link's full value.",
     "area" : "Links"
   },
   {
-    "why" : "Link to the final address. It saves visitors a round trip and keeps the link's full value.",
-    "severity" : "notice",
-    "fix" : "Change each link to the address the redirect ends at.",
-    "passed" : "Links between pages go straight there",
-    "area" : "Links",
-    "title" : "Links between pages go through a redirect",
-    "id" : "links.redirect"
-  },
-  {
+    "why" : "A 302 or 307 says the move is temporary, so search engines keep the old address. Use a 301 for a move that is meant to last.",
     "id" : "redirect.temporary",
     "title" : "Redirects marked as temporary",
-    "why" : "A 302 or 307 says the move is temporary, so search engines keep the old address. Use a 301 for a move that is meant to last.",
-    "fix" : "Change the redirect to a 301 if the move is permanent.",
     "area" : "Links",
+    "severity" : "notice",
     "passed" : "Redirects are permanent",
-    "severity" : "notice"
+    "fix" : "Change the redirect to a 301 if the move is permanent."
   },
   {
+    "title" : "Links that just say “click here”",
     "severity" : "notice",
-    "passed" : "Link text describes its destination",
     "why" : "Words like “click here” or “read more” waste the one place a link can say what it leads to.",
     "id" : "links.generic",
-    "fix" : "Reword each link so it says where it goes.",
     "area" : "Links",
-    "title" : "Links that just say “click here”"
+    "passed" : "Link text describes its destination",
+    "fix" : "Reword each link so it says where it goes."
   },
   {
-    "area" : "Security",
     "passed" : "No links to http:// addresses",
+    "severity" : "notice",
     "id" : "links.insecure",
-    "why" : "These links leave a secure page for an insecure address. Most destinations have an https version.",
     "fix" : "Change each link to https:// where the other site has it.",
-    "severity" : "notice",
-    "title" : "Links to http:// addresses"
+    "title" : "Links to http:// addresses",
+    "area" : "Security",
+    "why" : "These links leave a secure page for an insecure address. Most destinations have an https version."
   },
   {
-    "id" : "url.hygiene",
-    "webflow" : "Page settings → Slug. Then add the old address under Site settings → Publishing → 301 redirects.",
-    "severity" : "notice",
-    "why" : "Capital letters, underscores, doubled slashes and very long addresses are harder to share and easier to mistype.",
-    "title" : "Addresses that are long or untidy",
-    "area" : "Indexing",
     "passed" : "Addresses are short and tidy",
-    "fix" : "Use short lowercase addresses with hyphens between words, and redirect the old address when one changes."
+    "title" : "Addresses that are long or untidy",
+    "why" : "Capital letters, underscores, doubled slashes and very long addresses are harder to share and easier to mistype.",
+    "area" : "Indexing",
+    "severity" : "notice",
+    "fix" : "Use short lowercase addresses with hyphens between words, and redirect the old address when one changes.",
+    "webflow" : "Page settings → Slug. Then add the old address under Site settings → Publishing → 301 redirects.",
+    "id" : "url.hygiene"
   },
   {
-    "webflow" : "Page settings → SEO settings → Title tag. For Collection pages, set it once on the template page and build it from a field.",
-    "id" : "title.length",
-    "why" : "Search results show roughly 60 characters. Longer titles get cut off; very short ones waste the space.",
-    "area" : "Content",
     "severity" : "notice",
-    "passed" : "Titles are a sensible length",
     "title" : "Titles are very short or very long",
-    "fix" : "Aim for 10 to 60 characters, with the words that matter first."
+    "area" : "Content",
+    "passed" : "Titles are a sensible length",
+    "id" : "title.length",
+    "fix" : "Aim for 10 to 60 characters, with the words that matter first.",
+    "webflow" : "Page settings → SEO settings → Title tag. For Collection pages, set it once on the template page and build it from a field.",
+    "why" : "Search results show roughly 60 characters. Longer titles get cut off; very short ones waste the space."
   },
   {
-    "severity" : "notice",
-    "id" : "description.length",
-    "why" : "Search results show roughly 160 characters. Aim for 50 to 160.",
+    "area" : "Content",
     "passed" : "Meta descriptions are a sensible length",
+    "why" : "Search results show roughly 160 characters. Aim for 50 to 160.",
+    "severity" : "notice",
     "webflow" : "Page settings → SEO settings → Meta description. For Collection pages, set it once on the template page and build it from a field.",
     "title" : "Meta descriptions are very short or very long",
-    "area" : "Content",
-    "fix" : "Aim for 50 to 160 characters."
+    "fix" : "Aim for 50 to 160 characters.",
+    "id" : "description.length"
   },
   {
-    "passed" : "Canonical tags match their pages",
     "fix" : "If it is not deliberate, point the canonical at the page's own address.",
     "why" : "This can be deliberate. If it is not, the page is telling search engines to index a different one instead.",
-    "area" : "Indexing",
+    "id" : "canonical.mismatch",
     "severity" : "notice",
+    "area" : "Indexing",
     "title" : "Canonical tags point to a different page",
-    "id" : "canonical.mismatch"
+    "passed" : "Canonical tags match their pages"
   },
   {
-    "why" : "One main heading per page keeps the outline clear.",
     "id" : "h1.multiple",
-    "webflow" : "Select the heading on the canvas and change its tag in the Settings panel.",
     "title" : "Pages have more than one H1",
+    "fix" : "Keep one H1 and make the others H2.",
     "passed" : "No page has more than one H1",
     "area" : "Content",
-    "fix" : "Keep one H1 and make the others H2.",
-    "severity" : "notice"
+    "why" : "One main heading per page keeps the outline clear.",
+    "severity" : "notice",
+    "webflow" : "Select the heading on the canvas and change its tag in the Settings panel."
   },
   {
-    "severity" : "notice",
-    "area" : "Content",
-    "title" : "Headings skip a level",
     "passed" : "Headings step down one level at a time",
+    "area" : "Content",
     "id" : "heading.skip",
-    "why" : "An H2 followed by an H4 leaves a hole in the outline that screen readers and AI summaries rely on.",
+    "title" : "Headings skip a level",
     "fix" : "Step headings down one level at a time. Choose the tag for the outline and style it to look however it should.",
+    "why" : "An H2 followed by an H4 leaves a hole in the outline that screen readers and AI summaries rely on.",
+    "severity" : "notice",
     "webflow" : "Select the heading on the canvas and change its tag in the Settings panel."
   },
   {
     "fix" : "Add what a visitor would come to this page to find out, or leave it if the page is meant to be short.",
-    "title" : "Pages with under 200 words",
-    "passed" : "Every page has at least 200 words",
     "id" : "content.thin",
+    "title" : "Pages with under 200 words",
     "severity" : "notice",
     "area" : "Content",
+    "passed" : "Every page has at least 200 words",
     "why" : "There is little here for a search engine to rank. Fine for a contact page, a problem for a page meant to be found."
   },
   {
-    "passed" : "Every page has a doctype",
-    "area" : "Content",
-    "fix" : "Start the file with <!doctype html>.",
-    "why" : "Without <!doctype html> browsers fall back to a legacy rendering mode.",
     "id" : "doctype.missing",
-    "severity" : "notice",
-    "title" : "Pages have no doctype"
+    "title" : "Pages have no doctype",
+    "fix" : "Start the file with <!doctype html>.",
+    "area" : "Content",
+    "passed" : "Every page has a doctype",
+    "why" : "Without <!doctype html> browsers fall back to a legacy rendering mode.",
+    "severity" : "notice"
   },
   {
-    "webflow" : "Page settings → Open Graph settings. Fill in the title and description, or tick the boxes that reuse the SEO ones.",
-    "passed" : "Every page has a share title and description",
-    "area" : "Sharing",
-    "title" : "Pages are missing share titles or descriptions",
     "id" : "social.text.missing",
+    "title" : "Pages are missing share titles or descriptions",
     "fix" : "Add og:title and og:description to every page.",
     "severity" : "notice",
-    "why" : "og:title and og:description control the text on a shared link."
+    "area" : "Sharing",
+    "passed" : "Every page has a share title and description",
+    "why" : "og:title and og:description control the text on a shared link.",
+    "webflow" : "Page settings → Open Graph settings. Fill in the title and description, or tick the boxes that reuse the SEO ones."
   },
   {
-    "webflow" : "Site settings → Custom code → Head code. Paste the tag there so every page has it.",
-    "title" : "Pages have no Twitter card tag",
     "severity" : "notice",
-    "passed" : "Every page has a Twitter card tag",
     "area" : "Sharing",
-    "id" : "social.twitter.missing",
     "fix" : "Add <meta name=\"twitter:card\" content=\"summary_large_image\"> to the head.",
+    "passed" : "Every page has a Twitter card tag",
+    "title" : "Pages have no Twitter card tag",
+    "id" : "social.twitter.missing",
+    "webflow" : "Site settings → Custom code → Head code. Paste the tag there so every page has it.",
     "why" : "A twitter:card tag chooses between a small thumbnail and a large image when the link is posted on X."
   },
   {
-    "why" : "Shares and likes are counted against og:url. If it differs from the canonical they are credited to a different address.",
-    "area" : "Sharing",
+    "title" : "og:url differs from the canonical",
+    "severity" : "notice",
     "fix" : "Set og:url to the same address as the canonical.",
-    "severity" : "notice",
-    "passed" : "og:url matches the canonical",
     "id" : "social.url.mismatch",
-    "title" : "og:url differs from the canonical"
+    "area" : "Sharing",
+    "passed" : "og:url matches the canonical",
+    "why" : "Shares and likes are counted against og:url. If it differs from the canonical they are credited to a different address."
   },
   {
-    "title" : "Images over 200 KB",
-    "passed" : "No image is over 200 KB",
-    "webflow" : "Assets panel → select the image → Compress, which converts it to WebP or AVIF. Resize very large originals before uploading.",
-    "area" : "Images",
-    "fix" : "Resize each image to the size it is shown at and save it as WebP or AVIF.",
     "id" : "images.large",
+    "why" : "Worth a second look: most content images can be well under 200 KB in a modern format.",
+    "webflow" : "Assets panel → select the image → Compress, which converts it to WebP or AVIF. Resize very large originals before uploading.",
+    "passed" : "No image is over 200 KB",
+    "fix" : "Resize each image to the size it is shown at and save it as WebP or AVIF.",
     "severity" : "notice",
-    "why" : "Worth a second look: most content images can be well under 200 KB in a modern format."
+    "area" : "Images",
+    "title" : "Images over 200 KB"
   },
   {
-    "id" : "images.dimensions",
-    "title" : "Images have no width and height",
     "passed" : "Every image has a width and height",
-    "area" : "Images",
     "fix" : "Add width and height attributes to each image, matching the file's proportions.",
+    "why" : "Without both attributes the browser cannot reserve space, so the page jumps as images arrive.",
     "severity" : "notice",
-    "why" : "Without both attributes the browser cannot reserve space, so the page jumps as images arrive."
+    "title" : "Images have no width and height",
+    "id" : "images.dimensions",
+    "area" : "Images"
   },
   {
     "severity" : "notice",
-    "why" : "A filename, a single generic word or a paragraph is not a description. Aim for a short phrase saying what the image shows.",
-    "id" : "images.alt-quality",
+    "webflow" : "Select the image, open Image settings and fill in Alt text. Setting it on the file in the Assets panel covers every place the image is used.",
     "passed" : "Alt text is descriptive",
-    "area" : "Images",
-    "title" : "Alt text that says nothing",
     "fix" : "Rewrite the alt text as a short phrase that says what the image shows.",
-    "webflow" : "Select the image, open Image settings and fill in Alt text. Setting it on the file in the Assets panel covers every place the image is used."
+    "title" : "Alt text that says nothing",
+    "area" : "Images",
+    "id" : "images.alt-quality",
+    "why" : "A filename, a single generic word or a paragraph is not a description. Aim for a short phrase saying what the image shows."
   },
   {
-    "title" : "The first image on the page is lazy-loaded",
     "id" : "images.first-lazy",
-    "severity" : "notice",
-    "webflow" : "Select the image, open Image settings and set Load to Eager.",
-    "passed" : "The first image loads eagerly",
+    "fix" : "Remove loading=\"lazy\" from the first image on the page.",
     "area" : "Images",
+    "webflow" : "Select the image, open Image settings and set Load to Eager.",
+    "severity" : "notice",
+    "passed" : "The first image loads eagerly",
     "why" : "Lazy-loading the first image usually delays the largest thing on screen. Keep lazy loading for images further down.",
-    "fix" : "Remove loading=\"lazy\" from the first image on the page."
+    "title" : "The first image on the page is lazy-loaded"
   },
   {
     "severity" : "notice",
     "fix" : "Look at caching and hosting first: a page served from a cache near the visitor answers in well under a second.",
     "area" : "Performance",
-    "passed" : "Pages start answering within a second",
     "why" : "The server took over a second to begin its reply, measured from this Mac. Everything else on the page waits on that.",
-    "title" : "Pages are slow to start answering",
-    "id" : "perf.slow"
+    "id" : "perf.slow",
+    "passed" : "Pages start answering within a second",
+    "title" : "Pages are slow to start answering"
   },
   {
     "passed" : "No render-blocking scripts in the head",
     "area" : "Performance",
+    "title" : "Scripts in the head hold up the page",
+    "severity" : "notice",
     "fix" : "Add defer or async to the script tag, or move it to the end of the body.",
-    "webflow" : "Site settings → Custom code. Add defer to the tag in Head code, or move it to Footer code.",
     "id" : "perf.blocking-scripts",
     "why" : "A script in the head without async or defer stops the page drawing until it has downloaded and run.",
-    "severity" : "notice",
-    "title" : "Scripts in the head hold up the page"
+    "webflow" : "Site settings → Custom code. Add defer to the tag in Head code, or move it to Footer code."
   },
   {
     "why" : "Not a ranking factor, but each of these closes off a common attack on visitors.",
-    "fix" : "Set the missing headers on the server or the CDN.",
+    "severity" : "notice",
     "id" : "security.headers",
     "passed" : "Recommended security headers are set",
-    "severity" : "notice",
-    "area" : "Security",
-    "title" : "Recommended security headers are missing"
+    "title" : "Recommended security headers are missing",
+    "fix" : "Set the missing headers on the server or the CDN.",
+    "area" : "Security"
   },
   {
+    "passed" : "The site has structured data",
+    "why" : "Schema.org markup tells search engines what a page is (an organisation, an article, a product) and unlocks rich results.",
+    "title" : "No structured data on the site",
     "webflow" : "Paste the script into Page settings → Custom code → Inside <head> tag, or Site settings → Custom code → Head code when it is on every page.",
     "severity" : "notice",
-    "title" : "No structured data on the site",
     "id" : "schema.missing",
     "area" : "Structured data",
-    "fix" : "Add a JSON-LD script describing the organisation to the home page, then the type that fits each kind of page.",
-    "why" : "Schema.org markup tells search engines what a page is (an organisation, an article, a product) and unlocks rich results.",
-    "passed" : "The site has structured data"
+    "fix" : "Add a JSON-LD script describing the organisation to the home page, then the type that fits each kind of page."
   },
   {
+    "area" : "Structured data",
     "webflow" : "The script is usually in Page settings → Custom code → Inside <head> tag, or Site settings → Custom code → Head code when it is on every page. On a Collection template, fill the values from fields.",
     "passed" : "Structured data has its recommended properties",
-    "area" : "Structured data",
     "id" : "schema.recommended",
-    "severity" : "notice",
     "title" : "Structured data is missing recommended properties",
     "fix" : "Add the properties named in the findings where the page has something to put in them. Leave out any that do not apply.",
-    "why" : "The markup is read without these, but they are what puts a logo, a date or an author beside the result. Each one missing is a chance left open."
-  },
-  {
-    "webflow" : "The script is usually in Page settings → Custom code → Inside <head> tag, or Site settings → Custom code → Head code when it is on every page.",
-    "fix" : "Remove the retired types, or leave them: they do no harm.",
-    "why" : "Search engines have stopped showing rich results for these types. They do no harm, but they no longer do any good.",
-    "title" : "Structured data types that no longer earn a rich result",
-    "area" : "Structured data",
-    "id" : "schema.deprecated",
-    "passed" : "No retired structured data types",
+    "why" : "The markup is read without these, but they are what puts a logo, a date or an author beside the result. Each one missing is a chance left open.",
     "severity" : "notice"
   },
   {
-    "id" : "ai.llms-missing",
-    "passed" : "llms.txt found",
-    "fix" : "Optional. Publish a Markdown file at /llms.txt with a “# Title” line and links to the pages that matter.",
-    "title" : "No llms.txt",
+    "fix" : "Remove the retired types, or leave them: they do no harm.",
+    "passed" : "No retired structured data types",
+    "id" : "schema.deprecated",
+    "why" : "Search engines have stopped showing rich results for these types. They do no harm, but they no longer do any good.",
     "severity" : "notice",
-    "why" : "An optional Markdown file at /llms.txt that points AI assistants at the pages that matter. Search engines ignore it.",
-    "area" : "AI search"
+    "area" : "Structured data",
+    "title" : "Structured data types that no longer earn a rich result",
+    "webflow" : "The script is usually in Page settings → Custom code → Inside <head> tag, or Site settings → Custom code → Head code when it is on every page."
   },
   {
-    "id" : "hreflang.x-default",
     "severity" : "notice",
-    "why" : "x-default names the page for visitors whose language is not listed.",
+    "passed" : "llms.txt found",
+    "area" : "AI search",
+    "id" : "ai.llms-missing",
+    "fix" : "Optional. Publish a Markdown file at /llms.txt with a “# Title” line and links to the pages that matter.",
+    "why" : "An optional Markdown file at /llms.txt that points AI assistants at the pages that matter. Search engines ignore it.",
+    "title" : "No llms.txt"
+  },
+  {
+    "severity" : "notice",
     "passed" : "Hreflang sets have an x-default",
+    "why" : "x-default names the page for visitors whose language is not listed.",
+    "area" : "International",
     "title" : "Hreflang sets have no x-default",
     "fix" : "Add a hreflang=\"x-default\" tag to each set, pointing at the version to show everyone else.",
-    "area" : "International"
+    "id" : "hreflang.x-default"
   },
   {
-    "id" : "sitemap.lastmod-invalid",
-    "fix" : "Write each date as YYYY-MM-DD, the day the page last changed, and never later than today.",
-    "severity" : "notice",
     "why" : "A last-modified date has to be a day that has happened, written as 2026-02-07. Search engines stop trusting a sitemap whose dates cannot be true.",
-    "title" : "Sitemap dates are in the future or are not dates",
+    "id" : "sitemap.lastmod-invalid",
     "area" : "Sitemap",
-    "passed" : "Sitemap dates are real dates"
+    "title" : "Sitemap dates are in the future or are not dates",
+    "passed" : "Sitemap dates are real dates",
+    "severity" : "notice",
+    "fix" : "Write each date as YYYY-MM-DD, the day the page last changed, and never later than today."
   },
   {
-    "title" : "Pages forbid search snippets",
-    "area" : "Indexing",
-    "passed" : "No page forbids search snippets",
     "why" : "nosnippet or max-snippet:0 shows the page in search with no description, and keeps it out of AI answers. Sometimes deliberate, rarely wanted on a marketing page.",
-    "fix" : "Remove nosnippet and max-snippet:0 from the robots meta tag, unless the page is meant to show with no description.",
     "id" : "page.nosnippet",
     "webflow" : "Look for a robots meta tag in Page settings → Custom code → Inside <head> tag, or Site settings → Custom code → Head code when it is on every page.",
+    "severity" : "notice",
+    "title" : "Pages forbid search snippets",
+    "passed" : "No page forbids search snippets",
+    "area" : "Indexing",
+    "fix" : "Remove nosnippet and max-snippet:0 from the robots meta tag, unless the page is meant to show with no description."
+  },
+  {
+    "passed" : "Every page can be zoomed",
+    "area" : "Content",
+    "fix" : "Use <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"> and leave out user-scalable and maximum-scale.",
+    "title" : "Pages stop visitors zooming",
+    "why" : "user-scalable=no or a maximum-scale of 1 stops people enlarging text they cannot read.",
+    "id" : "viewport.zoom",
     "severity" : "notice"
   },
   {
-    "id" : "viewport.zoom",
     "severity" : "notice",
-    "passed" : "Every page can be zoomed",
     "area" : "Content",
-    "title" : "Pages stop visitors zooming",
-    "fix" : "Use <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"> and leave out user-scalable and maximum-scale.",
-    "why" : "user-scalable=no or a maximum-scale of 1 stops people enlarging text they cannot read."
-  },
-  {
-    "severity" : "notice",
-    "id" : "content.undated",
     "passed" : "Articles carry a date",
+    "why" : "These pages say they are articles but give no publication date in the markup. Readers, search engines and AI assistants all weigh how fresh an article is.",
+    "id" : "content.undated",
     "fix" : "Give the date in a <time datetime> element, an article:published_time tag, or datePublished in the page's JSON-LD.",
-    "area" : "Content",
-    "title" : "Articles show no date",
-    "why" : "These pages say they are articles but give no publication date in the markup. Readers, search engines and AI assistants all weigh how fresh an article is."
+    "title" : "Articles show no date"
   },
   {
-    "title" : "No contact or about page linked from the home page",
-    "why" : "A way to reach the people behind a site is one of the first things a visitor looks for, and one of the first signs of a site that can be trusted.",
-    "severity" : "notice",
-    "fix" : "Link to a contact or about page from the home page, in the navigation or the footer.",
-    "area" : "Content",
     "id" : "trust.contact",
-    "passed" : "The home page links to a contact or about page"
+    "severity" : "notice",
+    "why" : "A way to reach the people behind a site is one of the first things a visitor looks for, and one of the first signs of a site that can be trusted.",
+    "passed" : "The home page links to a contact or about page",
+    "area" : "Content",
+    "title" : "No contact or about page linked from the home page",
+    "fix" : "Link to a contact or about page from the home page, in the navigation or the footer."
   },
   {
-    "id" : "ai.fetch-blocked",
-    "fix" : "Remove the Disallow rules for these agents from robots.txt, or allow them by name.",
+    "why" : "When someone pastes a link into ChatGPT, Claude or Perplexity, these agents fetch the page. Blocked, the assistant can say nothing about it.",
     "severity" : "notice",
+    "id" : "ai.fetch-blocked",
     "area" : "AI search",
     "passed" : "Assistants may fetch pages for their users",
-    "why" : "When someone pastes a link into ChatGPT, Claude or Perplexity, these agents fetch the page. Blocked, the assistant can say nothing about it.",
-    "title" : "robots.txt blocks assistants fetching pages for their users",
-    "webflow" : "Site settings → SEO → robots.txt. Remove the rules for these agents, save and publish."
+    "fix" : "Remove the Disallow rules for these agents from robots.txt, or allow them by name.",
+    "webflow" : "Site settings → SEO → robots.txt. Remove the rules for these agents, save and publish.",
+    "title" : "robots.txt blocks assistants fetching pages for their users"
   },
   {
-    "fix" : "Save each image as WebP or AVIF, or serve it through an image service that converts on request.",
-    "title" : "Images are not offered in a modern format",
-    "area" : "Images",
-    "why" : "These are sent as JPEG or PNG even to a browser that asks for WebP or AVIF, which are typically a third smaller.",
-    "severity" : "notice",
     "webflow" : "Assets panel → select the image → Compress, which converts it to WebP or AVIF. Resize very large originals before uploading.",
-    "id" : "images.format",
-    "passed" : "Images are offered in a modern format"
+    "area" : "Images",
+    "fix" : "Save each image as WebP or AVIF, or serve it through an image service that converts on request.",
+    "severity" : "notice",
+    "title" : "Images are not offered in a modern format",
+    "passed" : "Images are offered in a modern format",
+    "why" : "These are sent as JPEG or PNG even to a browser that asks for WebP or AVIF, which are typically a third smaller.",
+    "id" : "images.format"
   },
   {
-    "passed" : "Long pages lazy-load their images",
     "title" : "Pages load every image at once",
     "webflow" : "Select the image, open Image settings and set Load to Lazy.",
+    "passed" : "Long pages lazy-load their images",
     "fix" : "Add loading=\"lazy\" to the images below the first screen. Leave the first one as it is.",
-    "id" : "images.no-lazy",
-    "severity" : "notice",
     "area" : "Images",
-    "why" : "With ten or more images and none marked lazy, the browser fetches them all before the visitor has scrolled."
+    "why" : "With ten or more images and none marked lazy, the browser fetches them all before the visitor has scrolled.",
+    "severity" : "notice",
+    "id" : "images.no-lazy"
   },
   {
     "why" : "og:image should start with https://. Some apps do not resolve a relative address, and show no picture.",
     "passed" : "Share images are given as full addresses",
-    "fix" : "Write og:image as a full address, starting with https://.",
-    "severity" : "notice",
     "area" : "Sharing",
-    "id" : "social.image.relative",
+    "fix" : "Write og:image as a full address, starting with https://.",
     "webflow" : "Page settings → Open Graph settings → Open Graph image URL.",
+    "severity" : "notice",
+    "id" : "social.image.relative",
     "title" : "Share images are not given as full addresses"
   },
   {
     "id" : "schema.values",
-    "webflow" : "The script is usually in Page settings → Custom code → Inside <head> tag, or Site settings → Custom code → Head code when it is on every page.",
-    "fix" : "Write dates as YYYY-MM-DD and addresses in full, starting with https://.",
+    "severity" : "notice",
     "area" : "Structured data",
-    "severity" : "notice",
+    "fix" : "Write dates as YYYY-MM-DD and addresses in full, starting with https://.",
+    "webflow" : "The script is usually in Page settings → Custom code → Inside <head> tag, or Site settings → Custom code → Head code when it is on every page.",
+    "passed" : "Structured data values are well formed",
     "title" : "Structured data has values in the wrong form",
-    "why" : "Dates should be written as 2026-02-07 and addresses in full. A value in another form is skipped, and the property counts as missing.",
-    "passed" : "Structured data values are well formed"
+    "why" : "Dates should be written as 2026-02-07 and addresses in full. A value in another form is skipped, and the property counts as missing."
   },
   {
-    "id" : "hreflang.protocol",
     "area" : "International",
+    "title" : "Hreflang sets mix http and https",
     "why" : "Every address in a set should use https. A stray http address redirects, and the pair it belongs to stops matching.",
-    "passed" : "Hreflang sets use one protocol",
-    "severity" : "notice",
+    "id" : "hreflang.protocol",
     "fix" : "Change the http:// addresses in the set to https://.",
-    "title" : "Hreflang sets mix http and https"
+    "passed" : "Hreflang sets use one protocol",
+    "severity" : "notice"
   },
   {
+    "fix" : "Add a lang attribute to the <html> tag, such as lang=\"en\".",
+    "webflow" : "Site settings → General → Localization → Language code.",
+    "id" : "lang.missing",
     "title" : "Pages do not declare a language",
     "severity" : "notice",
-    "webflow" : "Site settings → General → Localization → Language code.",
-    "fix" : "Add a lang attribute to the <html> tag, such as lang=\"en\".",
     "area" : "Content",
-    "why" : "The lang attribute on <html> helps screen readers and translation tools.",
     "passed" : "Every page declares a language",
-    "id" : "lang.missing"
+    "why" : "The lang attribute on <html> helps screen readers and translation tools."
   },
   {
-    "passed" : "Favicon found",
-    "title" : "No favicon",
-    "webflow" : "Site settings → General → Icons → Favicon.",
-    "id" : "favicon.missing",
-    "severity" : "notice",
-    "area" : "Content",
     "why" : "The small icon in browser tabs and some search results.",
-    "fix" : "Add a favicon and link to it from the head."
+    "id" : "favicon.missing",
+    "title" : "No favicon",
+    "area" : "Content",
+    "webflow" : "Site settings → General → Icons → Favicon.",
+    "fix" : "Add a favicon and link to it from the head.",
+    "passed" : "Favicon found",
+    "severity" : "notice"
   }
 ]

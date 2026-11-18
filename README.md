@@ -10,14 +10,14 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/BRIJRAJ-02/launchcheck/actions/workflows/ci.yml"><img src="https://github.com/BRIJRAJ-02/launchcheck/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/brijraj-rana/launchcheck/actions/workflows/ci.yml"><img src="https://github.com/brijraj-rana/launchcheck/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <img src="https://img.shields.io/badge/macOS-14%2B-black" alt="macOS 14+">
   <img src="https://img.shields.io/badge/SwiftUI-native-black" alt="SwiftUI">
   <img src="https://img.shields.io/badge/license-MIT-black" alt="MIT">
 </p>
 
 <p align="center">
-  <a href="https://brijraj-02.github.io/launchcheck/">Website</a> · <a href="https://github.com/BRIJRAJ-02/launchcheck/releases/latest">Download</a>
+  <a href="https://brijraj-rana.github.io/launchcheck/">Website</a> · <a href="https://github.com/brijraj-rana/launchcheck/releases/latest">Download</a>
 </p>
 
 <p align="center">
@@ -173,7 +173,7 @@ The new site can still be on its staging address, since redirects are written as
 
 ### Download
 
-Get `Launchcheck-x.y.z.dmg` from the [latest release](https://github.com/BRIJRAJ-02/launchcheck/releases/latest), open it and drag Launchcheck to Applications. It runs on Apple Silicon and Intel, macOS 14 or later.
+Get `Launchcheck-x.y.z.dmg` from the [latest release](https://github.com/brijraj-rana/launchcheck/releases/latest), open it and drag Launchcheck to Applications. It runs on Apple Silicon and Intel, macOS 14 or later.
 
 The app is not notarized, so macOS blocks the first launch. Either allow it under System Settings → Privacy & Security → Open Anyway, or run:
 
@@ -186,7 +186,7 @@ xattr -dr com.apple.quarantine /Applications/Launchcheck.app
 Requires Xcode 16 or later (for the Swift toolchain).
 
 ```bash
-git clone https://github.com/BRIJRAJ-02/launchcheck.git
+git clone https://github.com/brijraj-rana/launchcheck.git
 cd launchcheck
 ./scripts/build-app.sh --install   # builds, copies Launchcheck.app to /Applications, links the CLI, launches it
 ```

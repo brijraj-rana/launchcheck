@@ -157,7 +157,7 @@ extension ReportFormat {
         }
 
         out.append("""
-        <footer>Checked with <a href="https://github.com/BRIJRAJ-02/launchcheck">Launchcheck</a>. Pages are read the way a crawler reads them, without running JavaScript.</footer>
+        <footer>Checked with <a href="https://github.com/brijraj-rana/launchcheck">Launchcheck</a>. Pages are read the way a crawler reads them, without running JavaScript.</footer>
         </main>
         </body>
         </html>
