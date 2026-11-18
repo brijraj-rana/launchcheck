@@ -135,8 +135,23 @@ struct PageInspector: View {
                     Stepper(model: model)
                     Button("Open") { model.open(page.url) }.buttonStyle(QuietButton(compact: true)).help("Open this page in the browser")
                 }
-                block("In search") { SearchPreview(page: page, host: report.host) }
-                block("When shared") { SharePreview(page: page, host: report.host) }
+                let snippet = PagePreview.search(for: page, host: report.host)
+                block("In search") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        SearchResult(snippet: snippet, compact: true)
+                        HStack(spacing: 14) {
+                            Meter(label: "Title", text: snippet.title, limit: 60)
+                            Meter(label: "Description", text: snippet.description, limit: 158)
+                        }
+                    }
+                }
+                block("When shared") { CardView(card: PagePreview.card(for: page, host: report.host, on: .chat), compact: true) }
+                Button { model.showPreview(page.url) } label: {
+                    Text("Larger, with X and what to add").font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
+                        + Text("  ›").font(.system(size: 12)).foregroundStyle(.tertiary)
+                }
+                .buttonStyle(.plain)
+                .padding(.top, -12)
                 if !findings.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
                         SectionLabel(text: "To fix on this page", count: findings.count)
@@ -210,161 +225,37 @@ struct PageInspector: View {
 
 // MARK: Previews
 
-/// A sheet lifted off the page: the one place a box is the right shape, because it stands for a real object.
-private struct Sheet<Content: View>: View {
-    @ViewBuilder var content: Content
-
-    var body: some View {
-        content
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Tone.raised))
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Tone.hairline))
-            .shadow(color: .black.opacity(0.05), radius: 6, y: 2)
-    }
-}
-
-/// The page as a search result: what fits, and what gets cut.
-struct SearchPreview: View {
-    let page: PageSummary
-    let host: String
-
-    private static let link = Paint(light: Color(red: 0.10, green: 0.05, blue: 0.67), dark: Color(red: 0.56, green: 0.72, blue: 0.98))
-
-    private func cut(_ text: String, to limit: Int) -> String {
-        text.count > limit ? text.prefix(limit - 1).trimmingCharacters(in: .whitespaces) + "…" : text
-    }
-
-    var body: some View {
-        let title = page.title ?? ""
-        let description = page.description ?? ""
-        let path = (URL(string: page.url)?.path ?? "").split(separator: "/").map(String.init)
-        VStack(alignment: .leading, spacing: 8) {
-            Sheet {
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack(spacing: 8) {
-                        Circle().fill(Tone.lift).frame(width: 22, height: 22)
-                            .overlay(Text(String(host.replacingOccurrences(of: "www.", with: "").prefix(1)).uppercased()).font(.system(size: 10, weight: .semibold)))
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text(host).font(.system(size: 11.5))
-                            Text((["https://\(host)"] + path).joined(separator: " › "))
-                                .font(.system(size: 10.5))
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
-                        }
-                    }
-                    Text(title.isEmpty ? "No title: the search engine will invent one" : cut(title, to: 60))
-                        .font(.system(size: 16))
-                        .foregroundStyle(title.isEmpty ? Tone.error : Self.link)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Text(description.isEmpty ? "No description: a snippet from the page will be used instead." : cut(description, to: 160))
-                        .font(.system(size: 12))
-                        .lineSpacing(2)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .padding(14)
-            }
-            HStack(spacing: 14) {
-                Meter(label: "Title", count: title.count, limit: 60)
-                Meter(label: "Description", count: description.count, limit: 160)
-            }
-        }
-    }
-}
-
-/// How much of a length limit a text uses, and by how much it runs over.
+/// How much of a text a search result shows, and whether it runs over.
 struct Meter: View {
     let label: String
-    let count: Int
+    /// nil when the page has no such text.
+    let text: ClippedText?
+    /// About how many characters fit, for the length of the bar.
     let limit: Int
 
     var body: some View {
-        let over = count > limit
+        let count = text?.full.count ?? 0
+        let over = text?.isCut ?? false
         let tone: Paint = count == 0 ? Tone.error : (over ? Tone.warning : Tone.passed)
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 4) {
                 Text(label).font(.system(size: 11)).foregroundStyle(.secondary)
                 Spacer(minLength: 4)
-                Text(count == 0 ? "missing" : (over ? "\(count), cut at \(limit)" : "\(count) of \(limit)"))
+                Text(count == 0 ? "missing" : (over ? "\(count), cut at \(max(0, (text?.shown.count ?? 0) - 4))" : "\(count), fits"))
                     .font(.system(size: 11, weight: .medium).monospacedDigit())
                     .foregroundStyle(count == 0 || over ? AnyShapeStyle(tone) : AnyShapeStyle(.secondary))
             }
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
                     Capsule().fill(Tone.empty)
-                    Capsule().fill(tone).frame(width: max(count == 0 ? 0 : 3, geometry.size.width * min(1, CGFloat(count) / CGFloat(limit))))
+                    Capsule().fill(tone).frame(width: max(count == 0 ? 0 : 3, geometry.size.width * (over ? 1 : min(1, CGFloat(count) / CGFloat(limit)))))
                 }
             }
             .frame(height: 3)
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(label): \(count == 0 ? "missing" : "\(count) characters, limit \(limit)")")
-    }
-}
-
-/// The page as a link card in a chat or a social feed.
-struct SharePreview: View {
-    let page: PageSummary
-    let host: String
-    @Environment(\.isSnapshot) private var isSnapshot
-
-    var body: some View {
-        Sheet {
-            VStack(alignment: .leading, spacing: 0) {
-                Color.clear
-                    .frame(height: 168)
-                    .overlay { image }
-                    .clipped()
-                Tone.hairline.frame(height: 1)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(host).font(.system(size: 10.5)).foregroundStyle(.secondary)
-                    Text(page.shareTitle ?? page.title ?? "No title")
-                        .font(.system(size: 12.5, weight: .semibold))
-                        .lineLimit(1)
-                    Text(page.shareDescription ?? page.description ?? "No description")
-                        .font(.system(size: 11.5))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-            }
-        }
-    }
-
-    @ViewBuilder private var image: some View {
-        if isSnapshot, page.shareImage != nil {
-            // README images cannot load from the network; stand in with something that reads as a product photograph.
-            ZStack {
-                Color(red: 0.93, green: 0.90, blue: 0.84)
-                Circle().fill(Color(red: 0.87, green: 0.36, blue: 0.22)).frame(width: 150).offset(x: 96, y: 22)
-                Rectangle().fill(Color(red: 0.16, green: 0.15, blue: 0.14)).frame(width: 190, height: 46).offset(x: -70, y: 56)
-                Text("ACME").font(.system(size: 38, weight: .black)).tracking(-1).foregroundStyle(Color(red: 0.16, green: 0.15, blue: 0.14)).offset(x: -96, y: -22)
-            }
-        } else if let address = page.shareImage, let url = URL(string: address) {
-            AsyncImage(url: url) { phase in
-                switch phase {
-                case .success(let picture): picture.resizable().aspectRatio(contentMode: .fill)
-                case .failure: missing("The share image did not load", tone: Tone.error)
-                default: Tone.wash
-                }
-            }
-        } else {
-            missing("No share image", tone: Tone.warning)
-        }
-    }
-
-    private func missing(_ text: String, tone: Paint) -> some View {
-        ZStack {
-            Tone.wash
-            HStack(spacing: 6) {
-                Image(systemName: "photo").font(.system(size: 12)).foregroundStyle(tone)
-                Text(text).font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
-            }
-        }
+        .accessibilityLabel("\(label): \(count == 0 ? "missing" : "\(count) characters, \(over ? "cut" : "fits")")")
     }
 }
 

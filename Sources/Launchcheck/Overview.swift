@@ -17,7 +17,7 @@ struct OverviewTab: View {
         Scroller {
             VStack(alignment: .leading, spacing: 30) {
                 headline.rise(shown, order: 0)
-                Tally(report: report).rise(shown, order: 1)
+                Tally(report: report, handled: model.handled.count) { model.tab = .issues }.rise(shown, order: 1)
                 PageMap(model: model, report: report).rise(shown, order: 2)
                 HStack(alignment: .top, spacing: 36) {
                     next.frame(maxWidth: .infinity, alignment: .leading)
@@ -96,8 +96,9 @@ struct OverviewTab: View {
 
     private var next: some View {
         let groups = report.groups
-        let errors = groups.filter { $0.check.severity == .error }
-        let rest = groups.filter { $0.check.severity == .warning }
+        // Within each list, what has been handled sinks to the bottom.
+        let errors = sunk(groups.filter { $0.check.severity == .error })
+        let rest = sunk(groups.filter { $0.check.severity == .warning })
         let shown = Array(rest.prefix(max(3, 7 - errors.count)))
         return VStack(alignment: .leading, spacing: 22) {
             if !errors.isEmpty { list("Fix before launch", errors) }
@@ -120,28 +121,39 @@ struct OverviewTab: View {
         }
     }
 
+    private func sunk(_ groups: [Report.Group]) -> [Report.Group] {
+        let split = model.checklist.split(groups)
+        return split.open + split.handled
+    }
+
     private func list(_ title: String, _ groups: [Report.Group]) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             SectionLabel(text: title, count: groups.count)
             VStack(spacing: 0) {
                 ForEach(Array(groups.enumerated()), id: \.element.id) { index, group in
                     if index > 0 { Tone.hairline.frame(height: 1) }
+                    let handled = model.checklist.isHandled(group.id)
                     Button { model.reveal(group.check) } label: {
                         HStack(spacing: 10) {
                             Mark(group.check.severity)
-                            Text(group.check.title).font(.system(size: 13, weight: .medium)).lineLimit(1)
+                            Text(group.check.title).font(.system(size: 13, weight: handled ? .regular : .medium)).lineLimit(1)
                             Spacer(minLength: 10)
-                            Text(place(of: group))
-                                .font(.system(size: 11.5, design: .monospaced))
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
-                                .layoutPriority(-1)
+                            if handled {
+                                Text("Handled").font(.system(size: 11.5)).foregroundStyle(.secondary)
+                            } else {
+                                Text(place(of: group))
+                                    .font(.system(size: 11.5, design: .monospaced))
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                                    .layoutPriority(-1)
+                            }
                         }
+                        .opacity(handled ? 0.5 : 1)
                         .frame(height: 36)
                     }
                     .buttonStyle(RowStyle(inset: 0))
-                    .accessibilityLabel("\(group.check.title), \(group.findings.count) found")
+                    .accessibilityLabel("\(group.check.title), \(group.findings.count) found\(handled ? ", handled" : "")")
                 }
             }
         }
@@ -188,6 +200,9 @@ struct OverviewTab: View {
 /// Every check that ran, as one bar: how much failed at each level and how much passed.
 struct Tally: View {
     let report: Report
+    /// How many of the issues have been ticked as handled.
+    var handled = 0
+    var showIssues: () -> Void = {}
 
     var body: some View {
         let parts: [(Mark.Kind, Int, String, AnyShapeStyle)] = [
@@ -220,10 +235,20 @@ struct Tally: View {
                     }
                     .opacity(part.1 == 0 ? 0.45 : 1)
                 }
+                if handled > 0 {
+                    Spacer(minLength: 8)
+                    Button(action: showIssues) {
+                        Text("\(handled) of \(report.groups.count) handled")
+                            .font(.system(size: 12.5).monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Issues ticked as handled. They still count until a check finds them fixed.")
+                }
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(parts.map { "\($0.1) \($0.2)" }.joined(separator: ", "))
+        .accessibilityLabel(parts.map { "\($0.1) \($0.2)" }.joined(separator: ", ") + (handled > 0 ? ", \(handled) of \(report.groups.count) handled" : ""))
     }
 }
 

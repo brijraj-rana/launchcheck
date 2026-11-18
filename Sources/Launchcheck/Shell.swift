@@ -59,7 +59,7 @@ struct ContentView: View {
             if let report = model.report {
                 ReportShell(model: model, report: report)
             } else {
-                IdleView()
+                IdleView(model: model)
             }
         }
     }
@@ -88,7 +88,7 @@ enum ArrowKeys {
                 }
                 return nil
             }
-            guard model.report != nil, !model.isRunning, model.tab == .issues || model.tab == .pages else { return event }
+            guard model.report != nil, !model.isRunning, [.issues, .pages, .previews, .schema].contains(model.tab) else { return event }
             switch event.keyCode {
             case 125: model.move(by: 1)
             case 126: model.move(by: -1)
@@ -277,7 +277,7 @@ struct AddressBar: View {
                         .accessibilityLabel("Site address")
                 }
                 if isSnapshot {
-                    Image(systemName: "slider.horizontal.3").font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
+                    optionsLabel
                 } else {
                     options
                 }
@@ -294,7 +294,7 @@ struct AddressBar: View {
                     .buttonStyle(QuietButton())
                     .keyboardShortcut(.cancelAction)
             } else {
-                Button(sameSite ? "Check again" : "Check") { model.start() }
+                Button(sameSite && model.job.areas == nil ? "Check again" : "Check") { model.start() }
                     .buttonStyle(QuietButton(prominent: true))
                     .disabled(model.address.trimmingCharacters(in: .whitespaces).isEmpty)
             }
@@ -309,8 +309,35 @@ struct AddressBar: View {
         return shown == bare(Auditor.siteURL(from: model.address)?.host)
     }
 
+    /// What the next check will do, and the way to change it. The job is named so the choice is never hidden.
+    private var optionsLabel: some View {
+        HStack(spacing: 6) {
+            Text(model.job.title)
+                .font(.system(size: 11.5, weight: .medium))
+                .foregroundStyle(model.job.areas == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
+            Image(systemName: "slider.horizontal.3").font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
+        }
+        .padding(.leading, 8)
+        .frame(height: 22)
+        .contentShape(Rectangle())
+    }
+
+    @ViewBuilder private func jobButton(_ job: AuditModel.Job) -> some View {
+        Button { model.job = job } label: {
+            if model.job == job { Label(job.title, systemImage: "checkmark") } else { Text(job.title) }
+        }
+    }
+
     private var options: some View {
         Menu {
+            jobButton(.full)
+            Section("One job") {
+                ForEach(AuditModel.Job.focused) { jobButton($0) }
+            }
+            Menu("One area") {
+                ForEach(AuditModel.Job.others) { jobButton($0) }
+            }
+            Divider()
             Picker("Pages", selection: $model.maxPages) {
                 Text("Up to 50 pages").tag(50)
                 Text("Up to 200 pages").tag(200)
@@ -320,15 +347,13 @@ struct AddressBar: View {
             Toggle("Check links to other sites", isOn: $model.checkExternalLinks)
             Toggle("Weigh images", isOn: $model.checkImages)
         } label: {
-            Image(systemName: "slider.horizontal.3")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.secondary)
+            optionsLabel
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .fixedSize()
-        .help("How much to check")
-        .accessibilityLabel("Options")
+        .help("What to check, and how much. A job with the address of one page checks that page.")
+        .accessibilityLabel("Check: \(model.job.title). Options")
     }
 }
 
@@ -336,9 +361,9 @@ struct AddressBar: View {
 
 /// Nothing checked yet: say what to do, and show what an answer looks like.
 struct IdleView: View {
+    @ObservedObject var model: AuditModel
     private let examples: [(Severity, String, String)] = [
         (.error, "Pages are set to noindex", "/pricing"),
-        (.error, "Pages still point at a staging domain", "/about"),
         (.warning, "Pages have no share image", "/contact"),
         (.warning, "robots.txt blocks AI search crawlers", "/robots.txt"),
         (.notice, "Titles are too long or too short", "/blog"),
@@ -375,13 +400,27 @@ struct IdleView: View {
                     .frame(maxWidth: 500)
                 }
                 VStack(alignment: .leading, spacing: 8) {
-                    SectionLabel(text: "Ten areas")
-                    Text(LaunchcheckCore.Category.allCases.map(\.title).joined(separator: ", ") + ".")
-                        .font(.system(size: 13))
-                        .foregroundStyle(.secondary)
-                        .lineSpacing(3)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: 500, alignment: .leading)
+                    HStack(spacing: 6) {
+                        SectionLabel(text: "Or one job, from one link")
+                        Text("the address of a page checks that page").font(.system(size: 11)).foregroundStyle(.tertiary)
+                    }
+                    VStack(spacing: 0) {
+                        ForEach(Array(([AuditModel.Job.full] + AuditModel.Job.focused).enumerated()), id: \.element.id) { index, job in
+                            if index > 0 { Tone.hairline.frame(height: 1) }
+                            Button { model.job = job } label: {
+                                HStack(spacing: 10) {
+                                    Mark(model.job == job ? .passed : .none)
+                                    Text(job.title).font(.system(size: 13, weight: .medium)).frame(width: 150, alignment: .leading)
+                                    Text(job.about).font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)
+                                    Spacer(minLength: 0)
+                                }
+                                .frame(height: 32)
+                            }
+                            .buttonStyle(RowStyle(inset: 0))
+                            .accessibilityAddTraits(model.job == job ? .isSelected : [])
+                        }
+                    }
+                    .frame(maxWidth: 640)
                 }
             }
             .padding(.horizontal, 28)
@@ -496,18 +535,46 @@ struct ReportShell: View {
             .padding(.trailing, 16)
             .frame(height: 40)
             Tone.hairline.frame(height: 1)
+            if let note = report.scopeNote {
+                // A partial check says so on every tab, and offers the way to the whole one.
+                HStack(spacing: 10) {
+                    Image(systemName: "scope").font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary)
+                    Text(Self.banner(note, report: report))
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                    Spacer(minLength: 8)
+                    Button("Check everything") { model.checkEverything() }
+                        .buttonStyle(QuietButton(compact: true))
+                        .help("Run the full check of \(report.host)")
+                }
+                .padding(.leading, 28)
+                .padding(.trailing, 16)
+                .frame(height: 38)
+                .background(Tone.wash)
+                Tone.hairline.frame(height: 1)
+            }
 
             Group {
                 switch model.tab {
                 case .overview: OverviewTab(model: model, report: report)
                 case .issues: IssuesTab(model: model, report: report)
                 case .pages: PagesTab(model: model, report: report)
+                case .previews: PreviewsTab(model: model, report: report)
+                case .schema: SchemaTab(model: model, report: report)
                 case .changes: ChangesTab(model: model, report: report)
                 }
             }
             // Only the underline slides; the tab's contents change at once.
             .transaction(value: model.tab) { $0.animation = nil }
         }
+    }
+
+    /// What was checked, and that it was not kept, in one line.
+    static func banner(_ note: String, report: Report) -> String {
+        let first = note.components(separatedBy: ". The score").first ?? note
+        return "\(first). Shown, not kept."
     }
 
     @ViewBuilder private var export: some View {
@@ -520,8 +587,9 @@ struct ReportShell: View {
         } else {
             Menu {
                 Button("Copy as Markdown") { model.copyMarkdown() }
-                Button("Save as Markdown…") { model.save(json: false) }
-                Button("Save as JSON…") { model.save(json: true) }
+                Button("Save as HTML…") { model.save(as: .html) }
+                Button("Save as Markdown…") { model.save(as: .markdown) }
+                Button("Save as JSON…") { model.save(as: .json) }
             } label: {
                 Label(model.copied && model.tab != .issues ? "Copied" : "Export", systemImage: model.copied && model.tab != .issues ? "checkmark" : "square.and.arrow.up")
                     .font(.system(size: 11.5, weight: .medium))
@@ -538,6 +606,10 @@ struct ReportShell: View {
         case .overview: return nil
         case .issues: return report.groups.count
         case .pages: return report.pages.count
+        case .previews: return nil
+        case .schema:
+            let types = report.schemaTypesInUse.count
+            return types > 0 ? types : nil
         case .changes:
             guard let comparison = model.comparison else { return nil }
             let total = comparison.fixed.count + comparison.introduced.count + comparison.changes.count

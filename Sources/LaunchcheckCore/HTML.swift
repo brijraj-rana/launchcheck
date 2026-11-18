@@ -12,6 +12,8 @@ public struct ImageFact: Equatable, Sendable {
     public var hasDimensions: Bool
     public var lazy: Bool
     public var decorative: Bool
+    /// The file is only named in a data attribute, for a script to load later.
+    public var deferred: Bool = false
 }
 
 public struct LinkFact: Equatable, Sendable {
@@ -70,6 +72,15 @@ public struct PageFacts: Equatable, Sendable {
     /// Has the empty mount point of a client-rendered app (id="root", "app", "__next" or "__nuxt").
     public var hasAppRoot = false
     public var iframeCount = 0
+    /// The addresses of every stylesheet and external script, as written.
+    public var stylesheets: [String] = []
+    public var scripts: [String] = []
+    /// A hash of the visible words of the body, lowercased: two pages with the same text have the same one.
+    public var textFingerprint: UInt64 = 0
+    /// Has a <time> element, the usual way a page marks up a date.
+    public var hasTime = false
+    /// Carries RDFa attributes (typeof, vocab): structured data written into the markup.
+    public var hasRDFa = false
 
     public init() {}
 
@@ -99,6 +110,7 @@ public enum HTMLScanner {
         var inWord = false
         var hidden = 0                             // depth inside elements whose text nobody reads (svg, noscript, template)
 
+        var fingerprint: UInt64 = 0xcbf2_9ce4_8422_2325        // FNV-1a over the words of the body
         var headingLevel = 0
         var headingBytes: [UInt8] = []
         var anchor: LinkFact?
@@ -126,7 +138,11 @@ public enum HTMLScanner {
             if anchor != nil { anchorBytes.append(byte) }
             if inBody {
                 let letter = byte >= 0x80 || isLetter(byte) || (byte >= 48 && byte <= 57)
-                if letter, !inWord { facts.wordCount += 1 }
+                if letter, !inWord {
+                    facts.wordCount += 1
+                    fingerprint = (fingerprint ^ 32) &* 0x0000_0100_0000_01b3
+                }
+                if letter { fingerprint = (fingerprint ^ UInt64(isLetter(byte) ? byte | 0x20 : byte)) &* 0x0000_0100_0000_01b3 }
                 inWord = letter || (inWord && (byte == UInt8(ascii: "'") || byte == UInt8(ascii: "-")))
             }
         }
@@ -209,6 +225,7 @@ public enum HTMLScanner {
                 if anchor != nil { anchorBytes.append(UInt8(ascii: " ")) }
             }
             if attributes["itemscope"] != nil || attributes["itemtype"] != nil { facts.hasMicrodata = true }
+            if attributes["typeof"] != nil || attributes["vocab"] != nil { facts.hasRDFa = true }
             if let id = attributes["id"], id == "root" || id == "app" || id == "__next" || id == "__nuxt" { facts.hasAppRoot = true }
 
             switch name {
@@ -266,6 +283,7 @@ public enum HTMLScanner {
                 if rel.contains("icon") || rel.contains("apple-touch-icon") { facts.hasFavicon = true }
                 if rel.contains("stylesheet") {
                     facts.stylesheetCount += 1
+                    if !href.isEmpty { facts.stylesheets.append(href) }
                     if isInsecure(href) { facts.insecureResources.append(href) }
                 }
                 if rel.contains("alternate"), let language = attributes["hreflang"], !language.isEmpty {
@@ -294,15 +312,18 @@ public enum HTMLScanner {
                 let source = clean(attributes["src"] ?? attributes["data-src"] ?? "")
                 let decorative = attributes["role"] == "presentation" || attributes["aria-hidden"] == "true"
                 let alt = attributes["alt"].map(clean)
+                let written = attributes["src"] ?? ""
+                let deferred = (written.isEmpty || written.hasPrefix("data:")) && (attributes["data-src"] != nil || attributes["data-srcset"] != nil || attributes["data-lazy-src"] != nil)
                 facts.images.append(ImageFact(source: source, alt: alt,
                                               hasDimensions: attributes["width"] != nil && attributes["height"] != nil,
-                                              lazy: attributes["loading"]?.lowercased() == "lazy", decorative: decorative))
+                                              lazy: attributes["loading"]?.lowercased() == "lazy", decorative: decorative, deferred: deferred))
                 if isInsecure(source) { facts.insecureResources.append(source) }
                 if anchor != nil, let alt, !alt.isEmpty, anchor?.text.isEmpty == true { anchor?.text = alt }
             case "script":
                 facts.scriptCount += 1
                 let kind = (attributes["type"] ?? "").lowercased()
                 if let source = attributes["src"] {
+                    if !source.isEmpty { facts.scripts.append(clean(source)) }
                     if isInsecure(source) { facts.insecureResources.append(source) }
                     if inHead, attributes["async"] == nil, attributes["defer"] == nil, attributes["nomodule"] == nil, kind != "module" {
                         facts.blockingScripts.append(source)
@@ -319,6 +340,8 @@ public enum HTMLScanner {
                 i = findClosing(bytes, tag: name, from: i) ?? count
             case "svg", "noscript", "template":
                 hidden += 1
+            case "time":
+                facts.hasTime = true
             case "iframe":
                 facts.iframeCount += 1
                 if let source = attributes["src"], isInsecure(source) { facts.insecureResources.append(source) }
@@ -333,6 +356,7 @@ public enum HTMLScanner {
             facts.headings.append(Heading(level: headingLevel, text: clean(String(decoding: headingBytes, as: UTF8.self))))
         }
         if let unfinished = anchor { facts.anchors.append(unfinished) }
+        facts.textFingerprint = fingerprint
         return facts
     }
 

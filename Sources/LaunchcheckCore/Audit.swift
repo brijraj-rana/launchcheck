@@ -29,13 +29,23 @@ public final class Auditor: @unchecked Sendable {
 
     public func run(_ input: String, progress: @escaping @Sendable (AuditProgress) -> Void = { _ in }) async throws -> Report {
         let started = Date()
-        guard let entered = Self.siteURL(from: input) else { throw AuditError.invalidAddress(input) }
+        guard var entered = Self.siteURL(from: input) else { throw AuditError.invalidAddress(input) }
+        // A check of a site starts at its front door, whichever page the address was copied from.
+        if !options.singlePage, var parts = URLComponents(url: entered, resolvingAgainstBaseURL: false) {
+            parts.path = "/"
+            parts.query = nil
+            parts.fragment = nil
+            entered = parts.url ?? entered
+        }
         let enteredHost = entered.host ?? input
 
         progress(AuditProgress(phase: "Loading \(enteredHost)"))
         let home = await fetcher.fetch(entered, bodyWanted: true)
         guard home.status != 0 else { throw AuditError.unreachable(enteredHost, home.error ?? "No answer") }
-        guard home.ok else { throw AuditError.unreachable(enteredHost, "The home page answered with status \(home.status)") }
+        guard home.ok else { throw AuditError.unreachable(enteredHost, "The \(options.singlePage ? "page" : "home page") answered with status \(home.status)") }
+        // With only some areas asked for, the requests that only the others need are not made.
+        let wanted = options.areas
+        func wants(_ areas: Category...) -> Bool { wanted == nil || areas.contains { wanted?.contains($0) == true } }
 
         // The site lives wherever the address ends up (example.com may forward to www.example.com).
         guard let host = home.finalURL.host, let root = URL(string: "\(home.finalURL.scheme ?? "https")://\(host)\(home.finalURL.port.map { ":\($0)" } ?? "")/") else {
@@ -52,20 +62,24 @@ public final class Auditor: @unchecked Sendable {
         var robots: Robots?
         if robotsResult.status >= 500 {
             findings.append(Finding("robots.error", url: robotsURL, detail: "answers with \(robotsResult.status)"))
-            skipped.formUnion(["robots.blocks-all", "robots.missing", "ai.search-blocked", "sitemap.undeclared", "sitemap.blocked"])
+            skipped.formUnion(["robots.blocks-all", "robots.missing", "ai.search-blocked", "sitemap.undeclared", "sitemap.blocked",
+                               "ai.fetch-blocked", "robots.blocks-assets"])
         } else if robotsResult.ok, !robotsResult.isHTML {
             robots = Robots(String(decoding: robotsResult.body, as: UTF8.self))
         } else {
             findings.append(Finding("robots.missing", url: robotsURL))
-            skipped.formUnion(["robots.blocks-all", "sitemap.undeclared"])
+            skipped.formUnion(["robots.blocks-all", "sitemap.undeclared", "ai.fetch-blocked", "robots.blocks-assets"])
         }
         if let robots {
             if robots.blocksEverything {
                 findings.append(Finding("robots.blocks-all", url: robotsResult.finalURL, detail: "Disallow: /"))
-                skipped.insert("ai.search-blocked")       // already covered, and louder
+                skipped.formUnion(["ai.search-blocked", "ai.fetch-blocked", "robots.blocks-assets"])       // already covered, and louder
             } else {
                 for agent in Self.searchAgents where robots.blocks("/", agent: agent) {
                     findings.append(Finding("ai.search-blocked", url: robotsResult.finalURL, detail: "\(agent) is disallowed"))
+                }
+                for agent in AISearchChecks.blockedUserAgents(robots) {
+                    findings.append(Finding("ai.fetch-blocked", url: robotsResult.finalURL, detail: "\(agent) is disallowed"))
                 }
             }
         }
@@ -76,20 +90,28 @@ public final class Auditor: @unchecked Sendable {
         var listed = Set<String>()
         var offsite: [String] = []
         var dates: [String] = []
-        var queue = robots?.sitemaps.compactMap { URL(string: $0) } ?? []
-        if queue.isEmpty { queue = [root.appendingPathComponent("sitemap.xml")] }
+        // Each sitemap to read, with who named it. The one guessed at /sitemap.xml was named by nobody.
+        var queue: [(url: URL, source: String?)] = (robots?.sitemaps.compactMap { URL(string: $0) } ?? []).map { ($0, "robots.txt") }
+        if queue.isEmpty { queue = [(root.appendingPathComponent("sitemap.xml"), nil)] }
+        // One page of one area has no use for the sitemap unless the sitemap is the question.
+        if options.singlePage, !wants(.sitemap) { queue = [] }
         var read = Set<String>()
-        while let next = queue.first, read.count < 25 {
+        while let (next, source) = queue.first, read.count < 25 {
             queue.removeFirst()
             guard read.insert(next.absoluteString).inserted else { continue }
             let result = await fetcher.fetch(next, bodyWanted: true)
+            let contents = result.ok ? SitemapParser.parse(result.body) : SitemapContents()
+            if let source, let problem = SitemapChecks.unreadable(result, parsed: contents, namedBy: source) {
+                findings.append(Finding("sitemap.unreadable", url: next, detail: problem))
+            }
             guard result.ok, !result.body.isEmpty else { continue }
-            let contents = SitemapParser.parse(result.body)
             if contents.pages.count > 50_000 {
                 findings.append(Finding("sitemap.too-big", url: next, detail: "\(contents.pages.count) addresses in one file"))
+            } else if let bytes = Int(result.headers["content-length"] ?? ""), result.headers["content-encoding"] == nil, bytes > 52_428_800 {
+                findings.append(Finding("sitemap.too-big", url: next, detail: "\(Self.size(bytes)), over the 50 MB limit"))
             }
             dates.append(contentsOf: contents.dates)
-            queue.append(contentsOf: contents.sitemaps.compactMap { URL(string: $0) })
+            queue.append(contentsOf: contents.sitemaps.compactMap { URL(string: $0) }.map { ($0, "A sitemap index") })
             for location in contents.pages {
                 guard let url = URL(string: location), let pageHost = url.host else { continue }
                 if Self.sameSite(pageHost, host) {
@@ -104,8 +126,13 @@ public final class Auditor: @unchecked Sendable {
             findings.append(Finding("sitemap.missing", url: root.appendingPathComponent("sitemap.xml")))
             skipped.formUnion(["sitemap.broken", "sitemap.offsite", "sitemap.redirects", "sitemap.blocked", "sitemap.too-big",
                                "sitemap.noncanonical", "sitemap.undeclared", "sitemap.lastmod", "sitemap.noindex",
-                               "sitemap.incomplete", "page.orphan"])
+                               "sitemap.incomplete", "page.orphan", "sitemap.lastmod-invalid"])
+            if !findings.contains(where: { $0.check == "sitemap.unreadable" }) { skipped.insert("sitemap.unreadable") }
         } else {
+            if dates.isEmpty { skipped.insert("sitemap.lastmod-invalid") }
+            for problem in SitemapChecks.lastmodProblems(dates) {
+                findings.append(Finding("sitemap.lastmod-invalid", url: root.appendingPathComponent("sitemap.xml"), detail: problem))
+            }
             if let robots, robots.sitemaps.isEmpty { findings.append(Finding("sitemap.undeclared", url: robotsURL)) }
             if dates.count >= 10, Set(dates).count == 1 {
                 findings.append(Finding("sitemap.lastmod", url: root.appendingPathComponent("sitemap.xml"), detail: "all \(dates.count) entries say \(dates[0])"))
@@ -116,7 +143,7 @@ public final class Auditor: @unchecked Sendable {
 
         // llms.txt
         let llmsURL = root.appendingPathComponent("llms.txt")
-        let llms = await fetcher.fetch(llmsURL, bodyWanted: true)
+        let llms = wants(.ai) ? await fetcher.fetch(llmsURL, bodyWanted: true) : FetchResult(url: llmsURL, status: 0)
         if llms.ok, !llms.isHTML, !llms.body.isEmpty {
             let text = String(decoding: llms.body, as: UTF8.self)
             var problems: [String] = []
@@ -126,9 +153,20 @@ public final class Auditor: @unchecked Sendable {
             if text.range(of: #"\[[^\]]+\]\([^)\s]+\)"#, options: .regularExpression) == nil { problems.append("no Markdown links") }
             if text.count < 50 { problems.append("under 50 characters") }
             if !problems.isEmpty { findings.append(Finding("ai.llms-invalid", url: llmsURL, detail: problems.joined(separator: ", "))) }
+
+            // Where the file points. Other sites often turn robots away, so only this site's own pages are followed.
+            let targets = AISearchChecks.links(in: text, base: llmsURL).filter { Self.sameSite($0.host ?? "", host) }.prefix(60)
+            if targets.isEmpty {
+                skipped.insert("ai.llms-links")
+            } else {
+                let answers = await concurrentMap(Array(targets), limit: options.concurrency) { url in await self.fetcher.fetch(url, bodyWanted: false) }
+                for (url, answer) in zip(targets, answers) where answer.status == 0 || answer.status >= 400 {
+                    findings.append(Finding("ai.llms-links", url: llmsURL, detail: "\(url.absoluteString) \(Self.describe(answer))"))
+                }
+            }
         } else {
             findings.append(Finding("ai.llms-missing", url: llmsURL))
-            skipped.insert("ai.llms-invalid")
+            skipped.formUnion(["ai.llms-invalid", "ai.llms-links"])
         }
 
         // Pages: the sitemap when there is one, otherwise whatever the home page links lead to.
@@ -138,7 +176,20 @@ public final class Auditor: @unchecked Sendable {
         var pagesFound: Int
         let limit = max(1, options.maxPages)
 
-        if !sitemapPages.isEmpty {
+        let onePage = options.singlePage
+        if onePage {
+            // The one address that was given, and nothing else.
+            let listedHere = listed.contains(Self.key(home.finalURL)) || listed.contains(Self.key(entered))
+            pages.append(Page(url: home.finalURL, result: home, facts: homePage.facts, inSitemap: listedHere))
+            pagesFound = 1
+            // What only the whole site can answer is left unsaid.
+            skipped.formUnion(["page.orphan", "page.deep", "title.duplicate", "description.duplicate", "content.duplicate", "hreflang.return",
+                               "sitemap.broken", "sitemap.redirects", "sitemap.blocked", "sitemap.noncanonical", "sitemap.noindex"])
+            if Self.key(home.finalURL) != Self.key(root) {
+                skipped.insert("trust.contact")
+                statuses[Self.key(root)] = nil          // the front door was not read
+            }
+        } else if !sitemapPages.isEmpty {
             var targets = sitemapPages.filter { Self.key($0) != Self.key(root) }
             let homeListed = targets.count != sitemapPages.count
             pagesFound = targets.count + 1
@@ -213,6 +264,14 @@ public final class Auditor: @unchecked Sendable {
         var alternates: [String: (url: URL, targets: [String: String])] = [:]     // page → [target key: hreflang]
         var summaries: [PageSummary] = []
         var anyStructuredData = false
+        var indexableByKey: [String: Bool] = [:]
+        var canonicalTargets: [(page: URL, target: URL)] = []
+        var languagePages: [InternationalChecks.Page] = []
+        var textPages: [ContentChecks.Page] = []
+        var stylesheets: [URL] = []
+        var scripts: [URL] = []
+        var anyArticle = false
+        var anyLongGallery = false
 
         for page in loaded {
             guard let facts = page.facts else { continue }
@@ -229,6 +288,10 @@ public final class Auditor: @unchecked Sendable {
                 findings.append(Finding("page.noindex", url: url, detail: "X-Robots-Tag header"))
             }
             let indexable = !hidden && !header.contains("noindex") && !header.contains("none")
+            indexableByKey[pageKey] = indexable
+            if indexable, TechnicalChecks.forbidsSnippet(facts.robots.sorted().joined(separator: ",")) || TechnicalChecks.forbidsSnippet(header) {
+                findings.append(Finding("page.nosnippet", url: url, detail: facts.robots.contains("nosnippet") || header.contains("nosnippet") ? "nosnippet" : "max-snippet:0"))
+            }
             if page.inSitemap, !indexable { findings.append(Finding("sitemap.noindex", url: url)) }
             if facts.robots.contains("nofollow") || header.contains("nofollow") { findings.append(Finding("page.nofollow", url: url)) }
             if let refresh = facts.metaRefresh, refresh.lowercased().contains("url") {
@@ -256,6 +319,7 @@ public final class Auditor: @unchecked Sendable {
                     }
                 } else if Self.key(canonical) != pageKey {
                     canonicalIsSelf = false
+                    canonicalTargets.append((url, canonical))
                     findings.append(Finding("canonical.mismatch", url: url, detail: "→ \(canonical.absoluteString)"))
                     if page.inSitemap { findings.append(Finding("sitemap.noncanonical", url: url, detail: "canonical is \(canonical.absoluteString)")) }
                 }
@@ -306,6 +370,10 @@ public final class Auditor: @unchecked Sendable {
             }
             if facts.lang == nil { findings.append(Finding("lang.missing", url: url)) }
             if !facts.hasViewport { findings.append(Finding("viewport.missing", url: url)) }
+            if let block = TechnicalChecks.zoomBlock(in: facts.viewport ?? "") { findings.append(Finding("viewport.zoom", url: url, detail: block)) }
+            if indexable, canonicalIsSelf { textPages.append(ContentChecks.Page(url: url, fingerprint: facts.textFingerprint, words: facts.wordCount)) }
+            stylesheets += facts.stylesheets.compactMap { Self.resolve($0, base: base) }.filter { Self.sameSite($0.host ?? "", host) }
+            scripts += facts.scripts.compactMap { Self.resolve($0, base: base) }.filter { Self.sameSite($0.host ?? "", host) }
             if facts.hasPlaceholderText { findings.append(Finding("placeholder.text", url: url, detail: "“Lorem ipsum”")) }
             let shell = facts.wordCount < 50 && facts.hasAppRoot
             if shell {
@@ -344,6 +412,10 @@ public final class Auditor: @unchecked Sendable {
                 findings.append(Finding("images.alt-quality", url: url, detail: weakAlt.count > 1 ? "“\(example)” and \(weakAlt.count - 1) more" : "“\(example)”"))
             }
             if facts.images.first?.lazy == true { findings.append(Finding("images.first-lazy", url: url)) }
+            if facts.images.count >= 10 { anyLongGallery = true }
+            if ImageChecks.loadsEverythingAtOnce(facts.images) {
+                findings.append(Finding("images.no-lazy", url: url, detail: "\(facts.images.count) images, none lazy-loaded"))
+            }
             if url.scheme == "https", let first = facts.insecureResources.first {
                 let more = facts.insecureResources.count - 1
                 findings.append(Finding("mixed.content", url: url, detail: more > 0 ? "\(first) and \(more) more" : first))
@@ -358,6 +430,9 @@ public final class Auditor: @unchecked Sendable {
             var shareImage: String?
             if let image, let imageURL = URL(string: image, relativeTo: base)?.absoluteURL {
                 shareImage = imageURL.absoluteString
+                if let written = facts.social["og:image"], ImageChecks.isRelative(written) {
+                    findings.append(Finding("social.image.relative", url: url, detail: "og:image is “\(written.prefix(80))”"))
+                }
                 if !hostIsStaging, Self.isStaging(imageURL.host ?? "") {
                     findings.append(Finding("staging.leftovers", url: url, detail: "share image → \(imageURL.absoluteString)"))
                 }
@@ -382,15 +457,23 @@ public final class Auditor: @unchecked Sendable {
             let schema = SchemaInspector.inspect(facts.jsonLD)
             if !facts.jsonLD.isEmpty || facts.hasMicrodata { anyStructuredData = true }
             for issue in schema.issues { findings.append(Finding(issue.check, url: url, detail: issue.detail)) }
+            if facts.social["og:type"]?.lowercased() == "article" { anyArticle = true }
+            if ContentChecks.isUndatedArticle(facts, url: url, schemaTypes: schema.types) { findings.append(Finding("content.undated", url: url)) }
 
             // Hreflang
             if !facts.alternates.isEmpty {
                 var targets: [String: String] = [:]
                 var invalid: [String] = []
+                var entries: [(code: String, target: URL)] = []
                 for alternate in facts.alternates {
                     if let problem = Hreflang.problem(with: alternate.hreflang) { invalid.append(problem) }
-                    if let target = URL(string: alternate.href, relativeTo: base)?.absoluteURL { targets[Self.key(target)] = alternate.hreflang.lowercased() }
+                    if let target = URL(string: alternate.href, relativeTo: base)?.absoluteURL {
+                        targets[Self.key(target)] = alternate.hreflang.lowercased()
+                        entries.append((alternate.hreflang, target))
+                    }
                 }
+                languagePages.append(InternationalChecks.Page(url: url, key: pageKey,
+                                                              canonicalElsewhere: canonicalIsSelf ? nil : canonicalURL?.absoluteString, entries: entries))
                 if let first = invalid.first {
                     findings.append(Finding("hreflang.invalid", url: url, detail: invalid.count > 1 ? "\(first), and \(invalid.count - 1) more" : first))
                 }
@@ -429,6 +512,12 @@ public final class Auditor: @unchecked Sendable {
                 findings.append(Finding("links.insecure", url: url, detail: more > 0 ? "\(first) and \(more) more" : first))
             }
 
+            var shareTags: [String: String] = [:]
+            for (name, value) in facts.social where name.hasPrefix("og:") || name.hasPrefix("twitter:") {
+                // Images are kept as full addresses, so a preview can load them without knowing the page's base.
+                let isImage = name == "og:image" || name == "twitter:image"
+                shareTags[name] = isImage ? (URL(string: value, relativeTo: base)?.absoluteURL.absoluteString ?? value) : value
+            }
             summaries.append(PageSummary(
                 url: url.absoluteString, status: page.result.status, title: facts.title, description: facts.description,
                 canonical: canonicalURL?.absoluteString, robots: facts.robots.isEmpty ? nil : facts.robots.sorted().joined(separator: ", "),
@@ -436,7 +525,9 @@ public final class Auditor: @unchecked Sendable {
                 words: facts.wordCount, images: facts.imageCount, milliseconds: page.result.milliseconds, bytes: page.result.body.count,
                 indexable: indexable, schemaTypes: schema.types, shareTitle: facts.social["og:title"],
                 shareDescription: facts.social["og:description"], shareImage: shareImage,
-                hasShareTags: facts.social.keys.contains { $0.hasPrefix("og:") }))
+                hasShareTags: facts.social.keys.contains { $0.hasPrefix("og:") }, shareTags: shareTags,
+                schema: SchemaInspector.outline(facts.jsonLD),
+                markup: (facts.hasMicrodata ? ["Microdata"] : []) + (facts.hasRDFa ? ["RDFa"] : [])))
         }
 
         for (title, urls) in titles.sorted(by: { $0.key < $1.key }) where urls.count > 1 {
@@ -447,12 +538,28 @@ public final class Auditor: @unchecked Sendable {
         }
         if !anyStructuredData {
             findings.append(Finding("schema.missing", url: root))
-            skipped.formUnion(["schema.invalid", "schema.incomplete", "schema.placeholder", "schema.deprecated"])
+            skipped.formUnion(["schema.invalid", "schema.incomplete", "schema.placeholder", "schema.recommended", "schema.deprecated", "schema.values"])
+        }
+        for group in ContentChecks.duplicates(among: textPages) {
+            findings.append(Finding("content.duplicate", url: group[0], detail: "the same text on \(group.count) pages: \(Self.paths(group))"))
+        }
+        if textPages.count < 2 { skipped.insert("content.duplicate") }
+        if !anyArticle { skipped.insert("content.undated") }
+        if !anyLongGallery { skipped.insert("images.no-lazy") }
+        if let robots, !robots.blocksEverything {
+            let blocked = TechnicalChecks.blockedAssets(stylesheets: stylesheets, scripts: scripts, robots: robots)
+            for path in blocked.prefix(8) { findings.append(Finding("robots.blocks-assets", url: robotsURL, detail: path)) }
+            if blocked.count > 8 { findings.append(Finding("robots.blocks-assets", url: robotsURL, detail: "and \(blocked.count - 8) more")) }
+        }
+        // The home page should lead to the people behind the site.
+        if !skipped.contains("trust.contact"), let facts = homePage.facts, !ContentChecks.linksToPeople(facts) {
+            findings.append(Finding("trust.contact", url: root))
         }
 
         // Hreflang sets, now that every page's tags are known
         if alternates.isEmpty {
-            skipped.formUnion(["hreflang.invalid", "hreflang.self", "hreflang.return", "hreflang.x-default"])
+            skipped.formUnion(["hreflang.invalid", "hreflang.self", "hreflang.return", "hreflang.x-default",
+                               "hreflang.noncanonical", "hreflang.target", "hreflang.duplicate", "hreflang.protocol"])
         } else {
             for (pageKey, entry) in alternates.sorted(by: { $0.key < $1.key }) {
                 if entry.targets[pageKey] == nil { findings.append(Finding("hreflang.self", url: entry.url)) }
@@ -469,17 +576,34 @@ public final class Auditor: @unchecked Sendable {
         try Task.checkCancellation()
         var pending: [(key: String, url: URL)] = []
         let sortedTargets = linkTargets.sorted { $0.key < $1.key }
-        for (key, target) in sortedTargets where statuses[key] == nil && Self.sameSite(target.url.host ?? "", host) {
+        // Whether links lead anywhere matters to the links themselves, and to what is missing from the sitemap.
+        let followLinks = wants(.links) || (wants(.sitemap) && !onePage)
+        for (key, target) in sortedTargets where followLinks && statuses[key] == nil && Self.sameSite(target.url.host ?? "", host) {
             pending.append((key, target.url))
         }
-        if options.checkExternalLinks {
+        // Where canonicals and hreflang links lead has to be known too.
+        // A site in forty languages names forty addresses on every page; a sample of them is enough to show a pattern,
+        // and asking for them all would be rude.
+        var languageTargets = 0
+        var asked = Set<String>()
+        for (index, target) in (canonicalTargets.map(\.target) + languagePages.flatMap({ $0.entries.map(\.target) })).enumerated() {
+            let key = Self.key(target)
+            guard statuses[key] == nil, target.scheme == "http" || target.scheme == "https", asked.insert(key).inserted else { continue }
+            if index >= canonicalTargets.count {
+                guard languageTargets < 120 else { continue }
+                languageTargets += 1
+            }
+            pending.append((key, target))
+        }
+        let weighImages = options.checkImages && wants(.images)
+        if options.checkExternalLinks, wanted?.contains(.links) != false {
             for (key, target) in sortedTargets where statuses[key] == nil && !Self.sameSite(target.url.host ?? "", host) {
                 pending.append((key, target.url))
             }
         } else {
             skipped.insert("links.external")
         }
-        for (_, image) in shareImages.sorted(by: { $0.key < $1.key }) where statuses[Self.key(image.url)] == nil {
+        for (_, image) in shareImages.sorted(by: { $0.key < $1.key }) where wants(.sharing) && statuses[Self.key(image.url)] == nil {
             pending.append((key: Self.key(image.url), url: image.url))
         }
         var seenPending = Set<String>()
@@ -487,13 +611,13 @@ public final class Auditor: @unchecked Sendable {
 
         let sortedImages = pageImages.sorted { $0.key < $1.key }
         var imagePending: [(key: String, url: URL)] = []
-        if options.checkImages {
+        if weighImages {
             for (_, image) in sortedImages where statuses[Self.key(image.url)] == nil && !seenPending.contains(Self.key(image.url)) {
                 imagePending.append((Self.key(image.url), image.url))
             }
             imagePending = Array(imagePending.prefix(options.maxImageChecks))
         } else {
-            skipped.formUnion(["images.broken", "images.heavy", "images.large"])
+            skipped.formUnion(["images.broken", "images.heavy", "images.large", "images.format"])
         }
 
         for (phase, batch) in [("Checking links", pending), ("Weighing images", imagePending)] where !batch.isEmpty {
@@ -528,13 +652,13 @@ public final class Auditor: @unchecked Sendable {
                         findings.append(Finding("links.redirect", url: target.sources[0],
                                                 detail: "\(target.url.absoluteString) → \(result.finalURL.absoluteString)\(pagesNote)"))
                     }
-                    if hasSitemap, !truncated, result.ok, result.isHTML, Self.sameSite(result.finalURL.host ?? "", host),
+                    if hasSitemap, !truncated, !onePage, result.ok, result.isHTML, Self.sameSite(result.finalURL.host ?? "", host),
                        !listed.contains(key), !listed.contains(finalKey), finalKey != Self.key(root), !Self.isFile(target.url) {
                         missingFromSitemap += 1
                         if missingFromSitemap <= 25 { findings.append(Finding("sitemap.incomplete", url: target.url)) }
                     }
                 }
-            } else if options.checkExternalLinks {
+            } else if options.checkExternalLinks, wanted?.contains(.links) != false {
                 // Other sites often turn robots away; only call a link broken when the page is plainly gone.
                 if result.status == 404 || result.status == 410 || result.error == "The address does not exist" {
                     findings.append(Finding("links.external", url: target.sources[0],
@@ -562,18 +686,42 @@ public final class Auditor: @unchecked Sendable {
             let note = image.pages.count > 1 ? ", used on \(image.pages.count) pages" : ""
             findings.append(Finding("social.image.broken", url: image.pages[0], detail: "\(image.url.absoluteString) \(Self.describe(result))\(note)"))
         }
-        if options.checkImages {
+        if weighImages {
             for (_, image) in sortedImages {
                 guard let result = statuses[Self.key(image.url)] else { continue }
                 let used = Set(image.pages).count
                 let note = used > 1 ? ", on \(used) pages" : ""
                 if broken(result) {
                     findings.append(Finding("images.broken", url: image.pages[0], detail: "\(image.url.absoluteString) \(Self.describe(result))\(note)"))
-                } else if let bytes = Int(result.headers["content-length"] ?? ""), bytes > 200_000 {
+                    continue
+                }
+                guard result.ok else { continue }
+                let bytes = Int(result.headers["content-length"] ?? "") ?? 0
+                if bytes > 200_000 {
                     findings.append(Finding(bytes > 500_000 ? "images.heavy" : "images.large", url: image.pages[0],
                                             detail: "\(Self.size(bytes)): \(image.url.absoluteString)\(note)"))
+                } else if bytes > 100_000, let format = ImageChecks.olderFormat(result.headers) {
+                    // Heavier files are already listed above, with the same cure. These are the ones only the format would help.
+                    findings.append(Finding("images.format", url: image.pages[0], detail: "\(format), \(Self.size(bytes)): \(image.url.absoluteString)\(note)"))
                 }
             }
+        }
+
+        // Canonicals and hreflang links, now that it is known where they lead
+        func state(_ key: String) -> TargetState? {
+            guard let result = statuses[key] else { return nil }
+            let finalKey = Self.key(result.finalURL)
+            return TargetState(status: result.status, redirectedTo: finalKey != key ? result.finalURL.absoluteString : nil, indexable: indexableByKey[finalKey])
+        }
+        for (page, target) in canonicalTargets {
+            guard let problem = state(Self.key(target))?.problem else { continue }
+            findings.append(Finding("canonical.broken", url: page, detail: "\(target.absoluteString) \(problem)"))
+        }
+        findings += InternationalChecks.findings(for: languagePages, state: state)
+        // A page that is set aside on purpose says so in one place, not two.
+        if onePage, hasSitemap, let page = loaded.first, let facts = page.facts, !page.inSitemap,
+           indexableByKey[Self.key(page.result.finalURL)] == true, facts.canonical.map({ URL(string: $0, relativeTo: page.result.finalURL).map(Self.key) == Self.key(page.result.finalURL) }) != false {
+            findings.append(Finding("sitemap.incomplete", url: page.result.finalURL, detail: "this page is not in the sitemap"))
         }
 
         // How pages connect: who links to whom, and how far each is from the home page
@@ -602,7 +750,9 @@ public final class Auditor: @unchecked Sendable {
             summaries[index].depth = depth[key]
             summaries[index].inboundLinks = inbound[key] ?? 0
         }
-        if truncated {
+        if onePage {
+            // One page says nothing about how the rest connect.
+        } else if truncated {
             // With only part of the site read, "nothing links here" and "far from home" cannot be told.
             skipped.formUnion(["page.orphan", "page.deep", "sitemap.incomplete"])
         } else {
@@ -619,7 +769,7 @@ public final class Auditor: @unchecked Sendable {
 
         // The site as a whole
         progress(AuditProgress(phase: "Checking the domain"))
-        if root.scheme == "https", let plain = URL(string: "http://\(host)/") {
+        if root.scheme == "https", wants(.security), let plain = URL(string: "http://\(host)/") {
             let result = await fetcher.fetch(plain, bodyWanted: false)
             if result.ok, result.finalURL.scheme == "http" {
                 findings.append(Finding("https.redirect", url: plain, detail: "answers with \(result.status) and no redirect"))
@@ -647,7 +797,7 @@ public final class Auditor: @unchecked Sendable {
         }
 
         let twin: String? = host.hasPrefix("www.") ? String(host.dropFirst(4)) : (host.split(separator: ".").count == 2 ? "www.\(host)" : nil)
-        if let twin, let twinURL = URL(string: "\(root.scheme ?? "https")://\(twin)/") {
+        if let twin, wants(.indexing), let twinURL = URL(string: "\(root.scheme ?? "https")://\(twin)/") {
             let result = await fetcher.fetch(twinURL, bodyWanted: true)
             if result.ok, result.finalURL.host?.lowercased() == twin.lowercased() {
                 // A canonical pointing at the main address is an acceptable way to merge the two.
@@ -661,16 +811,20 @@ public final class Auditor: @unchecked Sendable {
         }
 
         let missing = root.appendingPathComponent("launchcheck-\(UUID().uuidString.prefix(8).lowercased())")
-        let missingResult = await fetcher.fetch(missing, bodyWanted: false)
-        if missingResult.ok {
+        if wants(.indexing), case let missingResult = await fetcher.fetch(missing, bodyWanted: false), missingResult.ok {
             findings.append(Finding("notfound.soft", url: missing, detail: "a made-up address answers with \(missingResult.status)"))
         }
 
-        if homePage.facts?.hasFavicon != true {
+        if homePage.facts?.hasFavicon != true, wants(.content) {
             let icon = await fetcher.fetch(root.appendingPathComponent("favicon.ico"), bodyWanted: false)
             if !icon.ok { findings.append(Finding("favicon.missing", url: root)) }
         }
 
+        // Only the areas that were asked for are reported. The rest is neither failed nor passed.
+        if let wanted {
+            findings = findings.filter { Check.named($0.check).map { wanted.contains($0.category) } ?? false }
+            skipped.formUnion(Check.all.filter { !wanted.contains($0.category) }.map(\.id))
+        }
         let failed = Set(findings.map(\.check))
         let order = Dictionary(uniqueKeysWithValues: Check.all.enumerated().map { ($1.id, $0) })
         let sorted = findings.enumerated().sorted { a, b in
@@ -682,12 +836,14 @@ public final class Auditor: @unchecked Sendable {
                       date: started,
                       pagesChecked: loaded.count,
                       pagesFound: max(pagesFound, loaded.count),
-                      linksChecked: linkTargets.count,
+                      linksChecked: followLinks || (options.checkExternalLinks && wants(.links)) ? linkTargets.count : 0,
                       seconds: Date().timeIntervalSince(started),
                       findings: sorted,
                       passed: Check.all.map(\.id).filter { !failed.contains($0) && !skipped.contains($0) },
                       pages: summaries,
-                      builtWith: loaded.contains { $0.facts?.isWebflow == true } || homePage.facts?.isWebflow == true ? "Webflow" : nil)
+                      builtWith: loaded.contains { $0.facts?.isWebflow == true } || homePage.facts?.isWebflow == true ? "Webflow" : nil,
+                      areas: wanted.map { chosen in Category.allCases.filter(chosen.contains).map(\.rawValue) },
+                      page: onePage ? home.finalURL.absoluteString : nil)
     }
 
     // MARK: Pieces

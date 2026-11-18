@@ -135,7 +135,7 @@ public final class History: @unchecked Sendable {
         self.directory = directory
     }
 
-    private func folder(for host: String) -> URL {
+    func folder(for host: String) -> URL {
         let safe = host.lowercased().map { $0.isLetter || $0.isNumber || $0 == "." || $0 == "-" ? $0 : "_" }
         return directory.appendingPathComponent(String(safe), isDirectory: true)
     }

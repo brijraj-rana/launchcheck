@@ -61,12 +61,16 @@ struct IssuesTab: View {
                             SectionLabel(text: section.title, count: section.groups.count).padding(.horizontal, 8)
                             VStack(spacing: 1) {
                                 ForEach(section.groups) { group in
-                                    IssueRow(group: group, showsArea: model.grouping == .severity, selected: model.selectedIssue == group.id) {
+                                    let handled = model.checklist.isHandled(group.id)
+                                    IssueRow(group: group, showsArea: model.grouping == .severity || handled, selected: model.selectedIssue == group.id, handled: handled) {
                                         // A click dissolves one explanation into the next; the arrow keys switch at once.
                                         Motion.run(Motion.swap) { model.selectedIssue = group.id }
+                                    } tick: {
+                                        Motion.run(Motion.move) { model.toggleHandled(group.id) }
                                     }
                                     .id(group.id)
                                     .contextMenu {
+                                        Button(handled ? "Mark as Not Handled" : "Mark as Handled") { model.toggleHandled(group.id) }
                                         Button("Copy as Task") { model.copyTask(group) }
                                         if let first = group.findings.compactMap(\.url).first {
                                             Button("Open First Page in Browser") { model.open(first) }
@@ -83,19 +87,25 @@ struct IssuesTab: View {
         }
     }
 
+    /// What is still to do, by level or by area, then everything ticked as handled in one section at the bottom.
     private func sections(of groups: [Report.Group]) -> [(title: String, groups: [Report.Group])] {
+        let split = model.checklist.split(groups)
+        var sections: [(title: String, groups: [Report.Group])]
         switch model.grouping {
         case .severity:
-            return [Severity.error, .warning, .notice].compactMap { severity in
-                let matching = groups.filter { $0.check.severity == severity }
+            sections = [Severity.error, .warning, .notice].compactMap { severity in
+                let matching = split.open.filter { $0.check.severity == severity }
                 return matching.isEmpty ? nil : (severity.label, matching)
             }
         case .area:
-            return LaunchcheckCore.Category.allCases.compactMap { category in
-                let matching = groups.filter { $0.check.category == category }
+            sections = LaunchcheckCore.Category.allCases.compactMap { category in
+                let matching = split.open.filter { $0.check.category == category }
                 return matching.isEmpty ? nil : (category.title, matching)
             }
         }
+        let handled = model.orderedGroups.filter { model.checklist.isHandled($0.id) }
+        if !handled.isEmpty { sections.append(("Handled", handled)) }
+        return sections
     }
 
     /// Every check that ran and found nothing, said the way it reads when it is true.
@@ -165,14 +175,19 @@ struct IssueRow: View {
     let group: Report.Group
     let showsArea: Bool
     let selected: Bool
+    var handled = false
     let action: () -> Void
+    var tick: (() -> Void)?
+    @State private var hovering = false
 
     var body: some View {
         let pages = Set(group.findings.compactMap(\.url)).count
+        // A handled row keeps its tick in view; any other row offers one under the pointer, where its count was.
+        let ticking = tick != nil && (handled || hovering)
         Button(action: action) {
             HStack(spacing: 10) {
                 Mark(group.check.severity)
-                Text(group.check.title).font(.system(size: 13, weight: .medium)).lineLimit(1)
+                Text(group.check.title).font(.system(size: 13, weight: handled ? .regular : .medium)).lineLimit(1)
                 Spacer(minLength: 10)
                 if showsArea {
                     Text(group.check.category.title).font(.system(size: 11.5)).foregroundStyle(.secondary).lineLimit(1)
@@ -181,11 +196,29 @@ struct IssueRow: View {
                     .font(.system(size: 11.5, weight: .medium).monospacedDigit())
                     .foregroundStyle(.secondary)
                     .frame(minWidth: 18, alignment: .trailing)
+                    .opacity(ticking ? 0 : 1)
             }
+            .opacity(handled ? 0.5 : 1)
             .frame(height: 34)
         }
         .buttonStyle(RowStyle(selected: selected))
-        .accessibilityLabel("\(group.check.title), \(group.check.severity.label), \(group.check.category.title), \(group.findings.count) found")
+        .overlay(alignment: .trailing) {
+            if ticking, let tick {
+                Button(action: tick) {
+                    Image(systemName: handled ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 26, height: 26)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .padding(.trailing, 3)
+                .help(handled ? "Handled. Click to put it back on the list." : "Mark as handled")
+                .accessibilityLabel(handled ? "Mark \(group.check.title) as not handled" : "Mark \(group.check.title) as handled")
+            }
+        }
+        .onHover { hovering = $0 }
+        .accessibilityLabel("\(group.check.title), \(group.check.severity.label), \(group.check.category.title), \(group.findings.count) found\(handled ? ", handled" : "")")
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
@@ -222,6 +255,17 @@ struct IssueInspector: View {
                         .foregroundStyle(.primary.opacity(0.82))
                         .fixedSize(horizontal: false, vertical: true)
                         .textSelection(.enabled)
+                    if let since = model.checklist.handled[check.id] {
+                        // Honest about what a tick is: a note to yourself, not a pass.
+                        HStack(alignment: .firstTextBaseline, spacing: 7) {
+                            Image(systemName: "checkmark.circle.fill").font(.system(size: 11.5)).foregroundStyle(.secondary)
+                            Text("Handled \(since.ago). It stays on the report until a check finds it fixed.")
+                                .font(.system(size: 12))
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(.top, 2)
+                    }
                 }
 
                 VStack(alignment: .leading, spacing: 5) {
@@ -263,6 +307,12 @@ struct IssueInspector: View {
                 }
 
                 HStack(spacing: 8) {
+                    let handled = model.checklist.isHandled(check.id)
+                    Button { Motion.run(Motion.move) { model.toggleHandled(check.id) } } label: {
+                        SwapText(text: handled ? "Put back on the list" : "Mark as handled")
+                    }
+                    .buttonStyle(QuietButton(compact: true))
+                    .help(handled ? "Untick this issue" : "Tick this off once it is dealt with. It is remembered for this site until a check finds it fixed. (⌘D)")
                     Button { model.copyTask(group) } label: { SwapText(text: model.copied ? "Copied" : "Copy as task") }
                         .buttonStyle(QuietButton(compact: true))
                         .help("Copy this issue as a checklist for a ticket or a message")

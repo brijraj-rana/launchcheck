@@ -1,6 +1,6 @@
 # Launchcheck
 
-> A free, open source Mac app and command-line tool that reads every page of a site and runs 84 checks for the mistakes that quietly cost a launch its search traffic.
+> A free, open source Mac app and command-line tool that reads every page of a site and runs 104 checks for the mistakes that quietly cost a launch its search traffic.
 
 ## Pages
 

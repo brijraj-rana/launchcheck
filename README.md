@@ -23,25 +23,30 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/overview-dark.png">
-    <img src="docs/overview.png" width="900" alt="Launchcheck overview: three things to fix before launch, a score of 77, one bar for every check that ran, a square for each of 48 pages, and scores by area">
+    <img src="docs/overview.png" width="900" alt="Launchcheck overview: three things to fix before launch, a score of 77, one bar for every check that ran with five of 24 issues handled, a square for each of 48 pages, and scores by area">
   </picture>
 </p>
 
 ## What it does
 
-Most launch mistakes are not hard to fix. They are hard to notice: a noindex carried over from staging, a canonical still pointing at `something.webflow.io`, a share image that 404s, a robots.txt that shuts out the AI search engines. Launchcheck reads every page in the sitemap and runs 84 checks against it.
+Most launch mistakes are not hard to fix. They are hard to notice: a noindex carried over from staging, a canonical still pointing at `something.webflow.io`, a share image that 404s, a robots.txt that shuts out the AI search engines. Launchcheck reads every page in the sitemap and runs 104 checks against it, in eleven areas.
 
-- **One line, then a score.** The verdict says whether the site can launch. The score says how far it is from tidy, broken down into ten areas.
+- **One line, then a score.** The verdict says whether the site can launch. The score says how far it is from tidy, broken down into eleven areas.
+- **One link, one job.** Paste an address and pick a single job: structured data, sharing and previews, indexing, images, hreflang or AI search. The address of a page checks that page; the address of a site checks the site.
+- **Structured data, taken apart.** Every JSON-LD block of a page: each item and what is nested in it, every property, what its type requires and recommends, and the Google result it can earn.
 - **The whole site at a glance.** One square per page, colored by the worst thing found on it. Click one to open that page.
 - **Sorted by what matters.** Fix before launch, should fix, worth a look. Every check says why it matters, when it counts as done, how to fix it and where it was found, and copies out as a checklist for a ticket.
+- **A list you can tick off.** Mark an issue as handled and it drops to the foot of the list, dimmed. The overview keeps count: “5 of 21 handled”. The tick is remembered for the site until a check finds the issue fixed.
+- **As people will meet it.** The Previews tab shows any page as a Google result, as the card a chat app draws from a pasted link, and as the card X draws, with what is cut and which tag is missing.
+- **A report to send.** The whole report as one HTML file with nothing to load: it opens anywhere, reads in light and dark, and prints.
 - **Says where in Webflow.** On a site built with Webflow, a fix names the setting it is made in: “Page settings → SEO settings → turn Sitemap indexing on”.
 - **Moving a site.** Give it the old site and the new one, and it writes the redirects that keep the old pages' ranking.
 - **Staging leftovers.** Noindex tags and headers, canonicals, share images and links that still point at a staging domain, and sitemaps generated on one.
 - **Every link and image.** Broken links, broken and overweight images, redirect chains, temporary redirects, pages nothing links to, pages buried more than three clicks deep.
 - **The head of every page.** Titles, descriptions, canonicals, headings, share tags, alt text, repeated tags.
-- **Structured data.** JSON-LD that does not parse, is missing required properties, still has template placeholders, or uses a type that no longer earns a rich result.
+- **Structured data.** JSON-LD that does not parse, names no type, is missing what its type requires or recommends (Organization, WebSite, Article, Product, BreadcrumbList, FAQPage), still has template placeholders, or uses a type that no longer earns a rich result.
 - **AI search.** Whether the crawlers behind ChatGPT, Claude and Perplexity are allowed in, whether pages have content without JavaScript, and whether there is an llms.txt.
-- **International.** Hreflang codes that do not exist, sets that leave themselves out, links that are not returned.
+- **International.** Hreflang codes that do not exist, sets that leave themselves out, links that are not returned, a language named twice, and versions that redirect, do not load or are set to noindex.
 - **The domain.** http to https, www and non-www, security headers, compression, whether a missing page really returns a 404.
 - **Works on any site.** Webflow, Framer, WordPress, hand-written. No sitemap? It follows links from the home page instead.
 
@@ -56,6 +61,23 @@ Most launch mistakes are not hard to fix. They are hard to notice: a noindex car
 
 Pick a page to see it as a search result, with the title and description cut where a search engine would cut them, and as a link card in a chat or a feed. Below that: word count, response time, how many clicks it is from the home page, what links to it, and what is wrong with it.
 
+### Where people meet the page
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/previews-dark.png">
+    <img src="docs/previews.png" width="900" alt="The Previews tab: the pricing page as a Google result with its description cut, as a large link card in a chat, and as the small card X draws, each with a note on what is cut or missing">
+  </picture>
+</p>
+
+The Previews tab opens on the home page; pick any other page from the list, which says for each one the first thing that would look wrong. There are three views of the page:
+
+- **On Google.** The site name, the address as a breadcrumb, the title and the description. Google cuts by width, not by count, so the cut is worked out from the width of the letters: a title of wide capitals is cut sooner than one of the same length in lower case. It is an estimate, good to within a word.
+- **In a chat.** The card Messages, Slack and WhatsApp draw from the Open Graph tags. A missing og:title or og:description borrows the page's own title and description, and the note says so.
+- **On X.** The twitter: tags first, the Open Graph ones after. `summary_large_image` gets the large card, anything else the small one with a square picture.
+
+A missing piece is shown as missing, with the tag to add. Once the share picture has loaded, its real size is checked too: too small for a large card, or a shape that will be cropped.
+
 ### What changed since last time
 
 <p align="center">
@@ -67,12 +89,61 @@ Pick a page to see it as a search result, with the title and description cut whe
 
 Each check of a site is kept. The next one is compared with it: what was fixed, what is new, and which pages changed their title, canonical, H1 or structured data, lost their share tags, or picked up a noindex. Run it before and after a deploy to see exactly what the deploy did.
 
+### Structured data, block by block
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/schema-dark.png">
+    <img src="docs/schema.png" width="900" alt="The Structured data tab: the types in use across the site and the pages that carry them on the left, and on the right a product page's two JSON-LD blocks, the Product with its properties, a missing priceCurrency marked as required, and the Brand, Offer and AggregateRating nested inside it">
+  </picture>
+</p>
+
+The Structured data tab lists the types in use and how many pages each is on, then every page with what it carries. Pick a page to see each `<script type="application/ld+json">` taken apart:
+
+- every item, including each member of a `@graph`, with what is nested inside it (an article's author and publisher, a product's offer and rating)
+- every property and its value, cut short
+- what the type requires and the item lacks, and what it only recommends
+- whether the block parses, and where it stops if it does not
+- the Google result the type can earn, where that is well known: Article, Product snippet, Breadcrumb, Organization logo, Site name, Local business, FAQ (now shown for government and health sites only)
+
+Microdata and RDFa are noted when they are there, but not taken apart. Each block has a Copy JSON-LD button, and the Schema.org validator and Google's Rich Results Test are one click away; nothing is sent to them.
+
+### One link, one job
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/focused-dark.png">
+    <img src="docs/focused.png" width="900" alt="A structured data check of one product page: the address bar names the job, a line under the tabs says only structured data was checked on this one page and was not kept, and the page's blocks are open below">
+  </picture>
+</p>
+
+Not every question needs the whole site read. The control at the end of the address field names what the next check will do, “Full check” to begin with. Open it and pick a job:
+
+| Job | Checks | Opens on |
+|---|---|---|
+| Structured data | every JSON-LD block, its types, properties and what is missing | Structured data |
+| Sharing and previews | share tags and images | Previews |
+| Indexing | robots.txt, noindex, canonical, sitemap membership, status and redirects | Issues |
+| Images | weight, format, alt text, size attributes, lazy loading | Issues |
+| International | hreflang, when the site uses it | Issues |
+| AI search | which assistants may read it, llms.txt, what is there without JavaScript | Issues |
+
+Any other single area (Links, Content, Performance, Security) is under “One area” in the same menu. Paste the address of a page and the job checks that page alone; paste a site and it reads the sitemap as usual. A line under the tabs says which was done.
+
+A check of one area or one page is shown but not kept. The score in the sidebar, the trend and the Changes tab stay with the last check of the whole site, because a score for one area is not a score for the site. When there is a full check to compare with, Changes compares like with like: the same areas of that check. The verdict never says “Ready to launch” for a partial check; it says what was looked at, as in “Structured data only: 1 thing to tidy”. The job is remembered for each site.
+
+### A list to work down
+
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/issues-dark.png">
-    <img src="docs/issues.png" width="900" alt="The Issues tab: issues grouped by severity on the left, and on the right why the selected one matters, when it counts as done and the pages it was found on">
+    <img src="docs/issues.png" width="900" alt="The Issues tab filtered to what should be fixed: six issues still to do, three dimmed under Handled with a tick, and on the right why the selected one matters, when it counts as done, how to fix it in Webflow and the pages it was found on">
   </picture>
 </p>
+
+Every issue says why it matters, when it counts as done, how to fix it and where it was found. Once one is dealt with, or you have decided to live with it, mark it as handled: point at its row and click the circle, press ⌘D, or use the button under the explanation. Handled issues are dimmed and collected at the foot of the list.
+
+A tick is a note to yourself, not a pass. The score and the verdict do not move until the site does. The tick is kept with the site's history and dropped when a later check finds the issue fixed, so if the problem comes back it comes back unticked.
 
 ### Moving a site
 
@@ -135,10 +206,16 @@ In Issues, the counts above the list are filters: everything, each level, or wha
 | Esc | Stop |
 | ⌘R | Check again |
 | Return | In the redirect list, edit where the picked address goes |
-| ⌘1 to ⌘4 | Overview, Issues, Pages, Changes |
+| ⌘1 to ⌘6 | Overview, Issues, Pages, Previews, Structured data, Changes |
+| ⌘D | Mark the picked issue as handled, or put it back |
 | ⇧⌘M | Move a site, and back |
 | ⇧⌘C | Copy the report as Markdown |
 | ⌘S | Save the report as Markdown |
+| ⇧⌘S | Save the report as HTML |
+
+### Sending the report
+
+Export → Save as HTML writes the whole report as one file: the verdict, the score, the counts, every issue with when it is done and how to fix it, what passed, and the page list. It marks what you have ticked as handled. Nothing in it is fetched from anywhere, so it opens offline and can be attached to an email; it follows the reader's light or dark setting and prints cleanly. Everything that came from the site is escaped. The same file comes from `launchcheck example.com --html`.
 
 ### Command line
 
@@ -148,16 +225,32 @@ The same engine, for a terminal or a CI job. It exits with 1 when something must
 launchcheck example.com
 launchcheck example.com --max-pages 1000 --no-external
 launchcheck example.com --markdown > report.md
+launchcheck example.com --html > report.html      # one file to send to a client
 launchcheck example.com --json > before.json
 launchcheck example.com --baseline before.json   # after the deploy: what changed
 ```
+
+One job at a time. `--only` and `--skip` take areas by name (`indexing`, `sitemap`, `links`, `content`, `sharing`, `structured`, `ai`, `images`, `performance`, `security`, `international`), and `--page` checks the one address given instead of the site:
+
+```bash
+launchcheck example.com/blog/launch-day --page --only structured     # this page's JSON-LD, taken apart
+launchcheck example.com/pricing --page --only sharing                # its share tags and image
+launchcheck example.com/pricing --page --only indexing,sitemap       # can this page be found
+launchcheck example.com --only images                                # every image on the site
+launchcheck example.com --only international                         # hreflang
+launchcheck example.com --only ai                                    # AI search
+launchcheck example.com --skip images,links --html > report.html     # everything else, as a report
+```
+
+A partial report says so in its first lines and in every export.
 
 ```
 https://www.example.com/
 2 things to fix before launch
 Score 77 of 100 (Not ready) · 48 pages and 312 links checked in 9.4s
 
-  Indexing         ██████████████░░░░░░ 71
+  Indexing         █████████████░░░░░░░ 66
+  Sitemap          ███████████████████░ 96
   Links            ████████████████░░░░ 82
   Content          ████████████████░░░░ 83
 
@@ -200,16 +293,17 @@ It comes forward with the latest kept report for that site, or checks the site i
 
 | Area | Fix before launch | Should fix | Worth a look |
 |---|---|---|---|
-| **Indexing** | robots.txt blocking everything or erroring · noindex pages · sitemap entries that do not load, sit on another domain or exceed 50,000 per file · staging leftovers · canonical on another domain | no sitemap · sitemap entries that redirect, are blocked or are not canonical · pages empty without JavaScript · no canonical · page-level nofollow · www and non-www both live · soft 404s | no robots.txt · sitemap not named in robots.txt · identical sitemap dates · noindex pages in the sitemap · linked pages missing from the sitemap · untidy addresses · canonical pointing elsewhere |
+| **Indexing** | robots.txt blocking everything or erroring · noindex pages · staging leftovers · canonical on another domain | pages empty without JavaScript · no canonical · canonical that redirects or does not load · robots.txt blocking stylesheets or scripts · page-level nofollow · www and non-www both live · soft 404s | no robots.txt · untidy addresses · canonical pointing elsewhere · pages that forbid snippets |
+| **Sitemap** | entries that do not load, sit on another domain or exceed 50,000 per file | no sitemap · a named sitemap that does not load · entries that redirect, are blocked or are not canonical | not named in robots.txt · identical dates · dates in the future or that are not dates · noindex pages listed · linked pages missing |
 | **Links** | broken links between pages | pages nothing links to · meta refresh redirects · redirect chains · links with no text · broken links to other sites | pages more than three clicks deep · links through a redirect · temporary redirects · “click here” links |
-| **Content** | missing titles | repeated titles, descriptions or head tags · missing description, H1, charset or viewport · placeholder text | title and description length · several H1s · skipped heading levels · pages under 200 words · no doctype, language or favicon |
-| **Sharing** | share images that do not load | no share image | missing share text or Twitter card · og:url differing from the canonical |
-| **Structured data** | | JSON-LD that does not parse · missing required properties · template placeholders | no structured data · retired types |
-| **AI search** | | robots.txt blocking AI search crawlers · malformed llms.txt | no llms.txt |
-| **Images** | images that do not load | missing alt text · images over 500 KB | images over 200 KB · no width and height · empty-calorie alt text · first image lazy-loaded |
+| **Content** | missing titles | repeated titles, descriptions or head tags · pages with exactly the same text · missing description, H1, charset or viewport · placeholder text | title and description length · several H1s · skipped heading levels · pages under 200 words · no doctype, language or favicon · zooming blocked · blog posts with no date · no contact or about page linked from home |
+| **Sharing** | share images that do not load | no share image | missing share text or Twitter card · og:url differing from the canonical · share image given as a path |
+| **Structured data** | | JSON-LD that does not parse · missing required properties · no type named · template placeholders | no structured data · missing recommended properties · dates and addresses in the wrong form · retired types |
+| **AI search** | | robots.txt blocking AI search crawlers · malformed llms.txt · dead links in llms.txt | no llms.txt · assistants blocked from fetching a page for a user |
+| **Images** | images that do not load | missing alt text · images over 500 KB | images over 200 KB · JPEG or PNG where WebP or AVIF was asked for · no width and height · empty-calorie alt text · first image lazy-loaded · ten or more images and none lazy |
 | **Performance** | | pages over 2 MB of HTML · no compression | slow first byte · render-blocking scripts |
 | **Security** | | files over plain http · http not redirecting · no HSTS | missing security headers · links to http addresses |
-| **International** | | invalid hreflang codes · sets missing the page itself · links not returned | no x-default |
+| **International** | | invalid hreflang codes · sets missing the page itself · links not returned · a language named twice · tags on a non-canonical page · versions that redirect, do not load or are noindex | no x-default · http mixed into an https set |
 
 Some judgement calls, so the report stays trustworthy:
 
@@ -221,11 +315,16 @@ Some judgement calls, so the report stays trustworthy:
 - **An empty `alt=""`** is correct for a decorative image and passes. Only a missing attribute is flagged.
 - **A redirect is only called ready when the match is plain.** The same address once tidied (case, a trailing slash, `.html`, `.php`, `/index`), the same page under another name for its section (`/blog/` and `/posts/`, with any dates dropped), or a last part at least 85% alike and clearly ahead of the next best. Titles and main headings have to be 90% alike. Anything looser, down to 60% for addresses and 65% for titles, is offered as a guess and marked.
 - **Webflow steps are only given where the place is certain.** A fix that has no setting of its own in Webflow, such as a response header, says how to fix it in general and stops there.
+- **Structured data is held to what its own type asks for.** Required properties are a “should fix”: a WebSite's url, a breadcrumb step's address, an FAQ's questions and answers, a Product's name, image and offer. Recommended ones are only worth a look: an Organization's name, url and logo, an Article's headline, image, date and author. Only items that stand on their own are held to the recommended list. An author or a publisher nested inside an article is often just a name, and that is fine.
+- **A comma before a closing bracket is called out by line.** It is the usual slip in hand-written JSON-LD, and some parsers wave it through. Search engines do not.
+- **New checks only ship when they can be sure.** The wider set was held against well-made public sites, and every new finding was opened and read. Two did not survive: “images with no cache lifetime” was dropped, because browsers cache a file with a Last-Modified date whether or not it says how long; and “articles with no date” now needs the page to sit in a blog or news section, because plenty of sites mark every inner page as an article.
+- **Pages with the same text means the same, word for word.** Near-duplicates are left alone: pages built from one template share most of their words and are not copies.
+- **Hreflang links are sampled on a large site.** A site in forty languages names forty addresses on every page. At most 120 of them are asked for, which is enough to show a pattern and not enough to be rude.
 - **Checks that do not apply are left out, not passed.** A site in one language has no International score at all.
 - **Images are weighed as a browser would receive them.** Requests say they accept AVIF and WebP, so a site that serves modern formats on request is not marked down for the PNG it keeps as a fallback.
 - **Response time is measured from your Mac**, once per page. It is a hint, not a lab result.
 
-What it deliberately does not do: anything that needs a paid data source, a Google account or a judgement call a script cannot make. No keyword research, backlink counts, Core Web Vitals field data or content quality scoring.
+What it deliberately does not do: anything that needs a paid data source, a Google account, a browser or a judgement call a script cannot make. No keyword research, backlink counts, Core Web Vitals field data, readability or content quality scoring, brand mentions, or tap target and font sizes.
 
 ## Design notes
 
@@ -243,10 +342,11 @@ What it deliberately does not do: anything that needs a paid data source, a Goog
 
 ```
 Sources/
-  LaunchcheckCore/   UI-free engine: fetching, HTML scanning, robots.txt and sitemaps, the checks and their fixes, scoring, comparison, the redirect matcher, report formats
+  LaunchcheckCore/   UI-free engine: fetching, HTML scanning, robots.txt and sitemaps, the checks and their fixes, scoring, comparison, the redirect matcher, the preview rules, the checklist, report formats
+    Areas/           the newer checks, one file for each area they belong to, each with its own tests
   Launchcheck/       the SwiftUI app
   launchcheck-cli/   the command-line front end
-Tests/               the scanner, robots.txt, sitemaps, structured data, hreflang, scoring, comparison, the redirect matcher and its formats, and whole audits of pretend sites
+Tests/               the scanner, robots.txt, sitemaps, structured data, hreflang, scoring, comparison, the redirect matcher and its formats, previews, the checklist, the HTML report, and whole audits of pretend sites
 scripts/             build-app.sh bundles the app and the DMG; make-icon.swift draws the icon in code; build-site.sh rebuilds the web page
 site/                the one-page website, static HTML with the check catalogue written into it
 ```

@@ -16,6 +16,7 @@ extension Report {
         "robots.blocks-all", "robots.error", "robots.missing", "sitemap.missing", "sitemap.too-big", "sitemap.undeclared", "sitemap.lastmod",
         "https.redirect", "security.hsts", "security.headers", "host.duplicate", "notfound.soft", "perf.uncompressed", "schema.missing",
         "ai.search-blocked", "ai.llms-invalid", "ai.llms-missing", "favicon.missing",
+        "sitemap.unreadable", "sitemap.lastmod-invalid", "robots.blocks-assets", "ai.fetch-blocked", "ai.llms-links", "trust.contact",
     ]
 
     /// A score per area: 100, less a deduction for each failed check. A failed check costs more the more pages it touches.

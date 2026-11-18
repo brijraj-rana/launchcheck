@@ -8,9 +8,14 @@ Usage: launchcheck <site> [options]
 Check a site:
   --max-pages <n>   Stop after this many pages (default 200)
   --no-external     Skip links to other sites
+  --only <areas>    Check only these areas, separated by commas: \(Category.allCases.map(\.key).joined(separator: ", "))
+  --skip <areas>    Check everything but these areas
+  --page            Check the one address given and nothing else, where a site check reads the whole sitemap
   --baseline <file> Compare with an earlier report saved with --json, and say what changed
   --markdown        Print the report as Markdown
+  --html            Print the report as one HTML file, ready to send to a client
   --json            Print the report as JSON
+  --format <name>   The same choice by name: text (the default), markdown, html or json
   --checks          List every check as JSON, with how to fix it, and exit
   -h, --help        Show this help
 
@@ -150,10 +155,34 @@ while !arguments.isEmpty {
         exit(0)
     case "--no-external":
         options.checkExternalLinks = false
+    case "--only", "--skip":
+        guard let list = arguments.first, !list.hasPrefix("--") else { fail("\(argument) needs one or more areas: \(Category.allCases.map(\.key).joined(separator: ", "))") }
+        arguments.removeFirst()
+        var named = Set<LaunchcheckCore.Category>()
+        for name in list.split(separator: ",") {
+            guard let area = LaunchcheckCore.Category.named(String(name)) else {
+                fail("“\(name)” is not an area. The areas are: \(Category.allCases.map(\.key).joined(separator: ", "))")
+            }
+            named.insert(area)
+        }
+        let current = options.areas ?? Set(LaunchcheckCore.Category.allCases)
+        options.areas = argument == "--only" ? current.intersection(named) : current.subtracting(named)
+        if options.areas?.isEmpty == true { fail("That leaves no area to check.") }
+        if options.areas?.count == LaunchcheckCore.Category.allCases.count { options.areas = nil }
+    case "--page":
+        options.singlePage = true
     case "--markdown":
         format = "markdown"
     case "--json":
         format = "json"
+    case "--html":
+        format = "html"
+    case "--format":
+        guard let name = arguments.first, ["text", "markdown", "html", "json"].contains(name) else {
+            fail("--format needs one of: text, markdown, html, json")
+        }
+        arguments.removeFirst()
+        format = name
     default:
         if argument.hasPrefix("-") || site != nil { fail("Unexpected argument: \(argument)\n\n\(usage)") }
         site = argument
@@ -172,9 +201,10 @@ do {
     switch format {
     case "markdown": print(ReportFormat.markdown(result), terminator: "")
     case "json": print(ReportFormat.json(result))
+    case "html": print(ReportFormat.html(result), terminator: "")
     default: print(ReportFormat.text(result), terminator: "")
     }
-    if let baseline, format != "json" {
+    if let baseline, format != "json", format != "html" {
         let comparison = Drift.compare(baseline, result)
         var lines = ["", "SINCE THE BASELINE", "  Score \(comparison.scoreBefore) → \(comparison.scoreAfter)"]
         for check in comparison.introduced { lines.append("  ✗ New: \(check.title)") }
@@ -184,6 +214,9 @@ do {
         }
         if comparison.isEmpty { lines.append("  Nothing changed.") }
         print(lines.joined(separator: "\n"))
+    }
+    if result.isPartial, format == "text", showProgress {
+        FileHandle.standardError.write(Data("This was a partial check. Run it without --only, --skip and --page for the whole site.\n".utf8))
     }
     code = result.count(.error) > 0 ? 1 : 0
 } catch {

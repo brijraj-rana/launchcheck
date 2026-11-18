@@ -27,11 +27,12 @@ public enum Severity: Int, Codable, Comparable, CaseIterable, Sendable {
 
 /// The areas a report is divided into. `weight` is the area's share of the overall score.
 public enum Category: String, Codable, CaseIterable, Sendable {
-    case indexing, links, content, sharing, structured, ai, images, performance, security, international
+    case indexing, sitemap, links, content, sharing, structured, ai, images, performance, security, international
 
     public var title: String {
         switch self {
         case .indexing: return "Indexing"
+        case .sitemap: return "Sitemap"
         case .links: return "Links"
         case .content: return "Content"
         case .sharing: return "Sharing"
@@ -47,6 +48,7 @@ public enum Category: String, Codable, CaseIterable, Sendable {
     public var blurb: String {
         switch self {
         case .indexing: return "Whether search engines can reach and keep each page"
+        case .sitemap: return "What the sitemap lists, and whether it is true"
         case .links: return "Links, redirects and how pages connect"
         case .content: return "Titles, descriptions, headings and text"
         case .sharing: return "How links look when shared"
@@ -59,9 +61,19 @@ public enum Category: String, Codable, CaseIterable, Sendable {
         }
     }
 
+    /// The name to type on the command line: "structured", "ai", "sitemap".
+    public var key: String { rawValue }
+
+    /// Reads an area from what someone typed: its key, or its title with or without spaces ("structured-data", "AI search").
+    public static func named(_ text: String) -> Category? {
+        let wanted = text.lowercased().filter { $0.isLetter }
+        return allCases.first { $0.rawValue == wanted || $0.title.lowercased().filter(\.isLetter) == wanted }
+    }
+
     public var weight: Double {
         switch self {
-        case .indexing: return 20
+        case .indexing: return 14
+        case .sitemap: return 6
         case .links: return 10
         case .content: return 22
         case .sharing: return 6
@@ -98,11 +110,11 @@ public struct Check: Equatable, Sendable {
               "Crawlers treat a server error on robots.txt as “stay out of everything”. It must answer with the file or a plain 404."),
         Check("page.noindex", .error, .indexing, "Pages are set to noindex", "No page is hidden from search engines",
               "A noindex tag or header tells search engines to drop the page. It is often left on from staging."),
-        Check("sitemap.broken", .error, .indexing, "Sitemap lists pages that do not load", "Every sitemap page loads",
+        Check("sitemap.broken", .error, .sitemap, "Sitemap lists pages that do not load", "Every sitemap page loads",
               "Search engines are being sent to pages that return an error. Remove them from the sitemap or restore the pages."),
-        Check("sitemap.offsite", .error, .indexing, "Sitemap lists pages on another domain", "Sitemap stays on this domain",
+        Check("sitemap.offsite", .error, .sitemap, "Sitemap lists pages on another domain", "Sitemap stays on this domain",
               "A sitemap should only list this site's own pages. Other domains here usually mean it was generated on staging."),
-        Check("sitemap.too-big", .error, .indexing, "A sitemap file lists more than 50,000 pages", "Sitemap files are within the size limit",
+        Check("sitemap.too-big", .error, .sitemap, "A sitemap file lists more than 50,000 pages", "Sitemap files are within the size limit",
               "Search engines stop reading a sitemap file at 50,000 addresses. Split it and list the parts in a sitemap index."),
         Check("staging.leftovers", .error, .indexing, "Pages still point at a staging domain", "No links to staging domains",
               "Links, canonicals or share images that point at a staging address will send visitors and search engines to the wrong site."),
@@ -119,13 +131,13 @@ public struct Check: Equatable, Sendable {
     ]
 
     private static let warnings: [Check] = [
-        Check("sitemap.missing", .warning, .indexing, "No sitemap found", "Sitemap found",
+        Check("sitemap.missing", .warning, .sitemap, "No sitemap found", "Sitemap found",
               "A sitemap tells search engines which pages exist. Publish one at /sitemap.xml and name it in robots.txt."),
-        Check("sitemap.redirects", .warning, .indexing, "Sitemap lists pages that redirect", "No redirects in the sitemap",
+        Check("sitemap.redirects", .warning, .sitemap, "Sitemap lists pages that redirect", "No redirects in the sitemap",
               "List the final address of each page, not one that redirects to it."),
-        Check("sitemap.blocked", .warning, .indexing, "Sitemap lists pages that robots.txt blocks", "robots.txt blocks nothing in the sitemap",
+        Check("sitemap.blocked", .warning, .sitemap, "Sitemap lists pages that robots.txt blocks", "robots.txt blocks nothing in the sitemap",
               "The sitemap invites crawlers to pages robots.txt turns them away from. Decide which one is right."),
-        Check("sitemap.noncanonical", .warning, .indexing, "Sitemap lists pages whose canonical is another page", "Every sitemap page is its own canonical",
+        Check("sitemap.noncanonical", .warning, .sitemap, "Sitemap lists pages whose canonical is another page", "Every sitemap page is its own canonical",
               "A sitemap should list the canonical address of each page. These pages say the real one is elsewhere."),
         Check("page.orphan", .warning, .links, "Pages that nothing links to", "Every page is linked from another page",
               "These pages are in the sitemap, but no page that was read links to them. Visitors cannot reach them and search engines give them little weight."),
@@ -193,6 +205,22 @@ public struct Check: Equatable, Sendable {
               "The language must be a two-letter ISO 639-1 code and the region a two-letter ISO 3166-1 code, as in en-GB. Invalid tags are ignored."),
         Check("hreflang.self", .warning, .international, "Hreflang sets do not include the page itself", "Every hreflang set includes the page itself",
               "Each page must list itself among its language versions, or the whole set can be disregarded."),
+        Check("sitemap.unreadable", .warning, .sitemap, "A sitemap that is named does not load", "Every named sitemap loads",
+              "robots.txt or a sitemap index points at a sitemap file that answers with an error or is not a sitemap. Pages listed only there go unannounced."),
+        Check("robots.blocks-assets", .warning, .indexing, "robots.txt blocks stylesheets or scripts", "robots.txt lets crawlers load stylesheets and scripts",
+              "Google draws a page before judging it. With the files that style and build it blocked, what it sees is a broken page."),
+        Check("canonical.broken", .warning, .indexing, "Canonical tags point at pages that redirect or do not load", "Canonical tags point at pages that load",
+              "A canonical names the address to index. One that redirects, errors or is set to noindex leaves search engines to guess."),
+        Check("content.duplicate", .warning, .content, "Pages with exactly the same text", "No two pages have the same text",
+              "Two addresses carrying the same words compete with each other, and search engines keep only one of them."),
+        Check("ai.llms-links", .warning, .ai, "llms.txt links to pages that do not load", "Every link in llms.txt loads",
+              "The file exists to point assistants at the pages that matter. A dead link there points them at nothing."),
+        Check("hreflang.noncanonical", .warning, .international, "Hreflang tags sit on pages whose canonical is another page", "Hreflang tags are only on canonical pages",
+              "Search engines read hreflang from the canonical page only. On a page that names another as its canonical, the tags are ignored."),
+        Check("hreflang.target", .warning, .international, "Hreflang links point at pages that redirect, do not load or are noindex", "Hreflang links point at pages that load",
+              "Each language version has to be a page that loads and may be indexed, or that language drops out of the set."),
+        Check("hreflang.duplicate", .warning, .international, "Hreflang sets name a language twice", "Each language appears once in a hreflang set",
+              "Two different pages claiming the same language and region leave search engines to pick one, or neither."),
         Check("hreflang.return", .warning, .international, "Hreflang links are not returned", "Hreflang links point both ways",
               "If page A names B as its translation, B must name A back. One-way links are ignored."),
     ]
@@ -200,13 +228,13 @@ public struct Check: Equatable, Sendable {
     private static let notices: [Check] = [
         Check("robots.missing", .notice, .indexing, "No robots.txt", "robots.txt found",
               "Not required, but it is where crawlers look first and where the sitemap is announced."),
-        Check("sitemap.undeclared", .notice, .indexing, "robots.txt does not name the sitemap", "robots.txt names the sitemap",
+        Check("sitemap.undeclared", .notice, .sitemap, "robots.txt does not name the sitemap", "robots.txt names the sitemap",
               "A “Sitemap:” line in robots.txt lets every crawler find it without being told."),
-        Check("sitemap.lastmod", .notice, .indexing, "Every sitemap entry has the same last-modified date", "Sitemap dates vary by page",
+        Check("sitemap.lastmod", .notice, .sitemap, "Every sitemap entry has the same last-modified date", "Sitemap dates vary by page",
               "Identical dates mean the sitemap stamps the build time on everything, so search engines learn to ignore them."),
-        Check("sitemap.noindex", .notice, .indexing, "Sitemap lists pages set to noindex", "No noindex pages in the sitemap",
+        Check("sitemap.noindex", .notice, .sitemap, "Sitemap lists pages set to noindex", "No noindex pages in the sitemap",
               "A sitemap asks for pages to be indexed; noindex asks for the opposite. Remove one or the other."),
-        Check("sitemap.incomplete", .notice, .indexing, "Linked pages are missing from the sitemap", "Linked pages are all in the sitemap",
+        Check("sitemap.incomplete", .notice, .sitemap, "Linked pages are missing from the sitemap", "Linked pages are all in the sitemap",
               "These pages are linked from the site and load fine, but the sitemap does not mention them."),
         Check("page.deep", .notice, .links, "Pages more than three clicks from the home page", "Every page is within three clicks of home",
               "The further a page is from the home page, the less often it is crawled and the less weight it carries."),
@@ -256,12 +284,36 @@ public struct Check: Equatable, Sendable {
               "Not a ranking factor, but each of these closes off a common attack on visitors."),
         Check("schema.missing", .notice, .structured, "No structured data on the site", "The site has structured data",
               "Schema.org markup tells search engines what a page is (an organisation, an article, a product) and unlocks rich results."),
+        Check("schema.recommended", .notice, .structured, "Structured data is missing recommended properties", "Structured data has its recommended properties",
+              "The markup is read without these, but they are what puts a logo, a date or an author beside the result. Each one missing is a chance left open."),
         Check("schema.deprecated", .notice, .structured, "Structured data types that no longer earn a rich result", "No retired structured data types",
               "Search engines have stopped showing rich results for these types. They do no harm, but they no longer do any good."),
         Check("ai.llms-missing", .notice, .ai, "No llms.txt", "llms.txt found",
               "An optional Markdown file at /llms.txt that points AI assistants at the pages that matter. Search engines ignore it."),
         Check("hreflang.x-default", .notice, .international, "Hreflang sets have no x-default", "Hreflang sets have an x-default",
               "x-default names the page for visitors whose language is not listed."),
+        Check("sitemap.lastmod-invalid", .notice, .sitemap, "Sitemap dates are in the future or are not dates", "Sitemap dates are real dates",
+              "A last-modified date has to be a day that has happened, written as 2026-02-07. Search engines stop trusting a sitemap whose dates cannot be true."),
+        Check("page.nosnippet", .notice, .indexing, "Pages forbid search snippets", "No page forbids search snippets",
+              "nosnippet or max-snippet:0 shows the page in search with no description, and keeps it out of AI answers. Sometimes deliberate, rarely wanted on a marketing page."),
+        Check("viewport.zoom", .notice, .content, "Pages stop visitors zooming", "Every page can be zoomed",
+              "user-scalable=no or a maximum-scale of 1 stops people enlarging text they cannot read."),
+        Check("content.undated", .notice, .content, "Articles show no date", "Articles carry a date",
+              "These pages say they are articles but give no publication date in the markup. Readers, search engines and AI assistants all weigh how fresh an article is."),
+        Check("trust.contact", .notice, .content, "No contact or about page linked from the home page", "The home page links to a contact or about page",
+              "A way to reach the people behind a site is one of the first things a visitor looks for, and one of the first signs of a site that can be trusted."),
+        Check("ai.fetch-blocked", .notice, .ai, "robots.txt blocks assistants fetching pages for their users", "Assistants may fetch pages for their users",
+              "When someone pastes a link into ChatGPT, Claude or Perplexity, these agents fetch the page. Blocked, the assistant can say nothing about it."),
+        Check("images.format", .notice, .images, "Images are not offered in a modern format", "Images are offered in a modern format",
+              "These are sent as JPEG or PNG even to a browser that asks for WebP or AVIF, which are typically a third smaller."),
+        Check("images.no-lazy", .notice, .images, "Pages load every image at once", "Long pages lazy-load their images",
+              "With ten or more images and none marked lazy, the browser fetches them all before the visitor has scrolled."),
+        Check("social.image.relative", .notice, .sharing, "Share images are not given as full addresses", "Share images are given as full addresses",
+              "og:image should start with https://. Some apps do not resolve a relative address, and show no picture."),
+        Check("schema.values", .notice, .structured, "Structured data has values in the wrong form", "Structured data values are well formed",
+              "Dates should be written as 2026-02-07 and addresses in full. A value in another form is skipped, and the property counts as missing."),
+        Check("hreflang.protocol", .notice, .international, "Hreflang sets mix http and https", "Hreflang sets use one protocol",
+              "Every address in a set should use https. A stray http address redirects, and the pair it belongs to stops matching."),
         Check("lang.missing", .notice, .content, "Pages do not declare a language", "Every page declares a language",
               "The lang attribute on <html> helps screen readers and translation tools."),
         Check("favicon.missing", .notice, .content, "No favicon", "Favicon found",
@@ -322,13 +374,22 @@ public struct PageSummary: Codable, Equatable, Identifiable, Sendable {
     public var shareDescription: String?
     public var shareImage: String?
     public var hasShareTags: Bool
+    /// The Open Graph and Twitter tags as written ("og:title", "twitter:card"), with image addresses made absolute.
+    /// Absent from reports kept before this was recorded; `shareTitle`, `shareDescription` and `shareImage` stand in.
+    public var shareTags: [String: String]?
+    /// Every JSON-LD block on the page, taken apart: its items, their fields and what each is missing.
+    /// Absent from reports kept before this was recorded.
+    public var schema: [SchemaBlock]?
+    /// Other structured data written into the markup, noted but not validated: "Microdata", "RDFa".
+    public var markup: [String]?
 
     public var id: String { url }
 
     public init(url: String, status: Int, title: String? = nil, description: String? = nil, canonical: String? = nil, robots: String? = nil,
                 h1: [String] = [], h2: [String] = [], words: Int = 0, images: Int = 0, milliseconds: Int = 0, bytes: Int = 0,
                 indexable: Bool = true, depth: Int? = nil, inboundLinks: Int = 0, schemaTypes: [String] = [],
-                shareTitle: String? = nil, shareDescription: String? = nil, shareImage: String? = nil, hasShareTags: Bool = false) {
+                shareTitle: String? = nil, shareDescription: String? = nil, shareImage: String? = nil, hasShareTags: Bool = false,
+                shareTags: [String: String]? = nil, schema: [SchemaBlock]? = nil, markup: [String]? = nil) {
         self.url = url
         self.status = status
         self.title = title
@@ -349,6 +410,9 @@ public struct PageSummary: Codable, Equatable, Identifiable, Sendable {
         self.shareDescription = shareDescription
         self.shareImage = shareImage
         self.hasShareTags = hasShareTags
+        self.shareTags = shareTags
+        self.schema = schema
+        self.markup = markup
     }
 }
 
@@ -359,6 +423,10 @@ public struct Options: Sendable {
     public var concurrency = 6
     public var maxLinkChecks = 1500
     public var maxImageChecks = 300
+    /// The areas to check. nil checks everything; anything else makes a partial report that says which areas it covers.
+    public var areas: Set<Category>?
+    /// Check the one address that was given and nothing else, where a site check would read the whole sitemap.
+    public var singlePage = false
 
     public init() {}
 }
@@ -389,9 +457,14 @@ public struct Report: Codable, Equatable, Sendable {
     public var pages: [PageSummary]
     /// What the site was built with, when it says so ("Webflow"). Absent from reports kept before this was recorded.
     public var builtWith: String?
+    /// The areas that were checked, by key, when not all of them were. nil for a full check, and for every report kept before areas could be chosen.
+    public var areas: [String]?
+    /// The one address that was checked, when the check was of a single page and not the site.
+    public var page: String?
 
     public init(site: String, date: Date = Date(), pagesChecked: Int, pagesFound: Int, linksChecked: Int, seconds: Double,
-                findings: [Finding], passed: [String], pages: [PageSummary] = [], builtWith: String? = nil) {
+                findings: [Finding], passed: [String], pages: [PageSummary] = [], builtWith: String? = nil,
+                areas: [String]? = nil, page: String? = nil) {
         self.site = site
         self.date = date
         self.pagesChecked = pagesChecked
@@ -402,6 +475,8 @@ public struct Report: Codable, Equatable, Sendable {
         self.passed = passed
         self.pages = pages
         self.builtWith = builtWith
+        self.areas = areas
+        self.page = page
     }
 
     /// True when the pages carry Webflow's marks, so fixes can name the place in Webflow where they are made.
@@ -439,10 +514,85 @@ public struct Report: Codable, Equatable, Sendable {
 
     public var verdict: String {
         let errors = count(.error)
-        if errors > 0 { return errors == 1 ? "1 thing to fix before launch" : "\(errors) things to fix before launch" }
         let warnings = count(.warning)
+        // A check of part of a site, or of one page, cannot say the site is ready. It says what it looked at, then what it found.
+        if let scope = scopeName {
+            if errors > 0 { return "\(scope): \(errors == 1 ? "1 thing" : "\(errors) things") to fix before launch" }
+            if warnings > 0 { return "\(scope): \(warnings == 1 ? "1 thing" : "\(warnings) things") to tidy" }
+            return "\(scope): nothing to fix"
+        }
+        if errors > 0 { return errors == 1 ? "1 thing to fix before launch" : "\(errors) things to fix before launch" }
         if warnings > 0 { return warnings == 1 ? "Ready to launch, with 1 thing to tidy" : "Ready to launch, with \(warnings) things to tidy" }
         return "Ready to launch"
+    }
+
+    /// The areas this report covers, when it does not cover them all.
+    public var checkedAreas: [Category]? {
+        guard let areas else { return nil }
+        let chosen = Category.allCases.filter { areas.contains($0.rawValue) }
+        return chosen.count == Category.allCases.count ? nil : chosen
+    }
+
+    /// True when only some areas were checked, or only one page.
+    public var isPartial: Bool { checkedAreas != nil || page != nil }
+
+    /// "Structured data only", "Sitemap and Images only", "One page only": what a partial report covers, in a few words.
+    public var scopeName: String? {
+        guard isPartial else { return nil }
+        var name: String
+        if let chosen = checkedAreas {
+            switch chosen.count {
+            case 1: name = chosen[0].title
+            case 2: name = "\(chosen[0].title) and \(chosen[1].title.prefix(1).lowercased() + chosen[1].title.dropFirst())"
+            default: name = "\(chosen.count) areas"
+            }
+            if page != nil { name += ", one page" }
+        } else {
+            name = "One page"
+        }
+        return name + " only"
+    }
+
+    /// One sentence saying what a partial report did and did not look at. nil for a full check.
+    public var scopeNote: String? {
+        guard isPartial else { return nil }
+        let what = checkedAreas.map { chosen in
+            chosen.count == 1 ? "Only \(chosen[0].title) was checked" : "Only \(chosen.count) areas were checked (\(chosen.map(\.title).joined(separator: ", ")))"
+        } ?? "Every area was checked"
+        let whereabouts = page != nil ? ", on this one page" : ""
+        return "\(what)\(whereabouts). The score covers that and nothing else."
+    }
+
+    /// Whether an area was looked at in this report.
+    public func covers(_ area: Category) -> Bool {
+        checkedAreas?.contains(area) ?? true
+    }
+
+    /// The structured data types in use, most common first, each with the number of pages it appears on. These are
+    /// the items that stand on their own (an Article, a Product), not what is nested inside them (its author, its offer).
+    public var schemaTypesInUse: [(type: String, pages: Int)] {
+        var counts: [String: Int] = [:]
+        for page in pages {
+            // A report kept before blocks were recorded only knows every type it met.
+            let own = page.schema.map { $0.flatMap(\.items).flatMap(\.types) } ?? page.schemaTypes
+            for type in Set(own) { counts[type, default: 0] += 1 }
+        }
+        return counts.sorted { a, b in a.value != b.value ? a.value > b.value : a.key < b.key }.map { ($0.key, $0.value) }
+    }
+
+    /// Pages carrying a JSON-LD block that could not be read.
+    public var pagesWithUnreadableSchema: [PageSummary] {
+        pages.filter { $0.schema?.contains { !$0.parses } ?? false }
+    }
+
+    /// The same report with everything outside some areas left out, so it can be compared fairly with a partial one.
+    public func restricted(to areas: [Category]) -> Report {
+        let keep = Set(areas)
+        var copy = self
+        copy.findings = findings.filter { Check.named($0.check).map { keep.contains($0.category) } ?? false }
+        copy.passed = passed.filter { Check.named($0).map { keep.contains($0.category) } ?? false }
+        copy.areas = areas.map(\.rawValue)
+        return copy
     }
 }
 

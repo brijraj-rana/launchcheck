@@ -72,11 +72,20 @@ struct LaunchcheckApp: App {
                         .disabled(model.report == nil || model.isRunning)
                 }
                 Divider()
+                Button(model.selectedIssue.map(model.checklist.isHandled) == true ? "Mark as Not Handled" : "Mark as Handled") {
+                    if let issue = model.selectedIssue { model.toggleHandled(issue) }
+                }
+                .keyboardShortcut("d")
+                .disabled(model.report == nil || model.isRunning || model.mode == .migrate || model.tab != .issues || model.selectedIssue == nil)
+                Divider()
                 Button("Copy as Markdown") { model.copyMarkdown() }
                     .keyboardShortcut("c", modifiers: [.command, .shift])
                     .disabled(model.report == nil)
                 Button("Save as Markdown…") { model.save(json: false) }
                     .keyboardShortcut("s")
+                    .disabled(model.report == nil)
+                Button("Save as HTML…") { model.save(as: .html) }
+                    .keyboardShortcut("s", modifiers: [.command, .shift])
                     .disabled(model.report == nil)
                 Button("Save as JSON…") { model.save(json: true) }
                     .disabled(model.report == nil)

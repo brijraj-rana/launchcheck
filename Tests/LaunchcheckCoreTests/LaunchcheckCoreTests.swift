@@ -16,6 +16,7 @@ final class StubFetcher: Fetcher, @unchecked Sendable {
     var defaultHeaders: [String: String] = [
         "content-encoding": "br", "strict-transport-security": "max-age=63072000", "x-content-type-options": "nosniff",
         "x-frame-options": "DENY", "content-security-policy": "default-src 'self'", "referrer-policy": "strict-origin-when-cross-origin",
+        "cache-control": "public, max-age=3600",
     ]
     /// What an address nobody defined answers with.
     var fallbackStatus = 404
@@ -49,7 +50,8 @@ final class StubFetcher: Fetcher, @unchecked Sendable {
 let filler = "<p>" + Array(repeating: "Plain words that say something useful about the subject at hand.", count: 24).joined(separator: " ") + "</p>"
 
 func page(title: String?, description: String? = "A perfectly reasonable description of what this page is about, for search results.",
-          canonical: String?, head: String = "", body: String = "<h1>Heading</h1>", lang: Bool = true, complete: Bool = true) -> String {
+          canonical: String?, head: String = "", body: String = "<h1>Heading</h1>", lang: Bool = true, complete: Bool = true,
+          image: String = "/share.png") -> String {
     var html = lang ? "<!doctype html><html lang=\"en\"><head>" : "<html><head>"
     if let title { html += "<title>\(title)</title>" }
     if let description { html += "<meta name=\"description\" content=\"\(description)\">" }
@@ -57,7 +59,7 @@ func page(title: String?, description: String? = "A perfectly reasonable descrip
     if complete {
         html += "<meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width\">"
         html += "<meta property=\"og:title\" content=\"T\"><meta property=\"og:description\" content=\"D\">"
-        html += "<meta property=\"og:image\" content=\"/share.png\"><meta name=\"twitter:card\" content=\"summary_large_image\">"
+        html += "<meta property=\"og:image\" content=\"\(image)\"><meta name=\"twitter:card\" content=\"summary_large_image\">"
     }
     return html + head + "</head><body>" + body + (complete ? filler : "") + "</body></html>"
 }
@@ -252,6 +254,8 @@ final class LaunchcheckCoreTests: XCTestCase {
             // and what the wider set of checks adds for the same site
             "images.broken", "images.dimensions", "doctype.missing", "sitemap.noindex", "social.twitter.missing", "page.orphan",
             "schema.missing", "ai.llms-missing",
+            // and the checks added from the wider checklists
+            "social.image.relative",
         ]
         XCTAssertEqual(failed, expected, "unexpected: \(failed.subtracting(expected).sorted()), missing: \(expected.subtracting(failed).sorted())")
 
@@ -283,13 +287,13 @@ final class LaunchcheckCoreTests: XCTestCase {
     func testPassesATidySite() async throws {
         let web = StubFetcher()
         let root = "https://www.tidy.com"
-        let icon = "<link rel=\"icon\" href=\"/icon.png\"><script type=\"application/ld+json\">{\"@context\":\"https://schema.org\",\"@type\":\"Organization\",\"name\":\"Tidy\"}</script>"
+        let icon = "<link rel=\"icon\" href=\"/icon.png\"><script type=\"application/ld+json\">{\"@context\":\"https://schema.org\",\"@type\":\"Organization\",\"name\":\"Tidy\",\"url\":\"https://www.tidy.com/\",\"logo\":\"https://www.tidy.com/icon.png\"}</script>"
         web.answers = [
             "\(root)/a.png": .init(type: "image/png", headers: ["content-length": "48000"]),
             "\(root)/llms.txt": .init(type: "text/plain", body: "# Tidy\n\n> Keeps things in order.\n\n## Pages\n\n- [About](https://www.tidy.com/about): who we are\n"),
-            "\(root)/": .init(body: page(title: "Tidy keeps things in order", canonical: "\(root)/", head: icon, body: "<h1>Tidy</h1><a href=\"/about/\">About</a>")),
+            "\(root)/": .init(body: page(title: "Tidy keeps things in order", canonical: "\(root)/", head: icon, body: "<h1>Tidy</h1><a href=\"/about/\">About</a>", image: "\(root)/share.png")),
             "\(root)/about": .init(body: page(title: "About the people at Tidy", description: "Who we are, where we work and why we like things to be kept in good order.",
-                                              canonical: "\(root)/about", head: icon, body: "<h1>About</h1><a href=\"/\">Home</a><img src=\"/a.png\" alt=\"\" width=\"40\" height=\"40\">")),
+                                              canonical: "\(root)/about", head: icon, body: "<h1>About</h1><a href=\"/\">Home</a><img src=\"/a.png\" alt=\"\" width=\"40\" height=\"40\">", image: "\(root)/share.png")),
             "\(root)/share.png": .init(type: "image/png"),
             "\(root)/robots.txt": .init(type: "text/plain", body: "User-agent: *\nAllow: /\nSitemap: \(root)/sitemap.xml"),
             "\(root)/sitemap.xml": .init(type: "application/xml", body: "<urlset><url><loc>\(root)/</loc></url><url><loc>\(root)/about</loc></url></urlset>"),
@@ -303,7 +307,10 @@ final class LaunchcheckCoreTests: XCTestCase {
         XCTAssertEqual(report.pagesChecked, 2)
         XCTAssertEqual(report.verdict, "Ready to launch")
         // Everything passes except the hreflang checks, which do not apply to a site in one language.
-        XCTAssertEqual(Set(Check.all.map(\.id)).subtracting(report.passed), ["hreflang.invalid", "hreflang.self", "hreflang.return", "hreflang.x-default"])
+        // Nor do checks with nothing to look at: no dates in the sitemap, no articles, no page with ten images.
+        XCTAssertEqual(Set(Check.all.map(\.id)).subtracting(report.passed),
+                       ["hreflang.invalid", "hreflang.self", "hreflang.return", "hreflang.x-default", "hreflang.noncanonical", "hreflang.target",
+                        "hreflang.duplicate", "hreflang.protocol", "sitemap.lastmod-invalid", "content.undated", "images.no-lazy"])
         XCTAssertEqual(report.score, 100)
         XCTAssertNil(report.categoryScores.first { $0.category == .international }?.score)
         XCTAssertEqual(report.pages.map(\.url), ["https://www.tidy.com/", "https://www.tidy.com/about"])
@@ -333,7 +340,8 @@ final class LaunchcheckCoreTests: XCTestCase {
 
         let report = try await Auditor(fetcher: web).run("plain.org")
         XCTAssertEqual(report.pagesChecked, 4)
-        XCTAssertEqual(Set(report.findings.map(\.check)), ["robots.missing", "sitemap.missing", "links.internal", "schema.missing", "ai.llms-missing"])
+        XCTAssertEqual(Set(report.findings.map(\.check)), ["robots.missing", "sitemap.missing", "links.internal", "schema.missing", "ai.llms-missing",
+                                                                "trust.contact", "social.image.relative"])
         XCTAssertFalse(report.passed.contains("sitemap.broken"), "sitemap checks cannot pass without a sitemap")
 
         var limited = Options()
@@ -402,7 +410,8 @@ final class LaunchcheckCoreTests: XCTestCase {
         XCTAssertEqual(details("ai.search-blocked"), ["/robots.txt  PerplexityBot is disallowed"])
         XCTAssertEqual(details("ai.llms-invalid"), ["/llms.txt  no “# Title” line, no Markdown links, under 50 characters"])
 
-        XCTAssertEqual(details("schema.invalid"), ["/  a JSON-LD block is not valid JSON"])
+        XCTAssertEqual(details("schema.invalid").count, 1)
+        XCTAssertEqual(details("schema.invalid").first?.hasPrefix("/  a JSON-LD block is not valid JSON"), true)
         XCTAssertEqual(Set(details("schema.incomplete")), ["/  Product has no image", "/  Product offer has a price but no priceCurrency",
                                                            "/  BreadcrumbList items need a position and a name"])
         XCTAssertEqual(details("schema.deprecated"), ["/  HowTo: rich results removed in September 2023"])
@@ -470,8 +479,9 @@ final class LaunchcheckCoreTests: XCTestCase {
         XCTAssertEqual(fine.types, ["LocalBusiness", "PostalAddress", "AggregateRating"])
 
         let broken = SchemaInspector.inspect(["{\"@type\":\"Restaurant\",\"name\":\"\"}", "[1, 2"])
-        XCTAssertEqual(Set(broken.issues.map(\.detail)), ["a JSON-LD block has no @context", "Restaurant has no name", "Restaurant has no address",
-                                                         "a JSON-LD block is not valid JSON"])
+        XCTAssertEqual(Set(broken.issues.map(\.detail).filter { !$0.hasPrefix("a JSON-LD block is not valid JSON") }),
+                       ["a JSON-LD block has no @context", "Restaurant has no name", "Restaurant has no address"])
+        XCTAssertEqual(broken.issues.filter { $0.check == "schema.invalid" }.count, 1)
         XCTAssertEqual(SchemaInspector.inspect([" "]), SchemaInspector.Result())
     }
 

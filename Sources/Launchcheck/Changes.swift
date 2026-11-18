@@ -31,10 +31,12 @@ struct ChangesTab: View {
             }
         } else {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Nothing to compare yet")
+                Text(report.isPartial ? "Not compared" : "Nothing to compare yet")
                     .font(.system(size: 26, weight: .semibold))
                     .tracking(-0.3)
-                Text("This is the first check of \(report.host). Check it again after the next deploy and this tab lists what was fixed, what is new, and which pages changed.")
+                Text(report.isPartial
+                    ? "A check of \(report.page != nil ? "one page" : "part of a site") is only compared when there is a full check of \(report.host) to hold it against, and a single page never is. Run the full check to see what changed."
+                    : "This is the first check of \(report.host). Check it again after the next deploy and this tab lists what was fixed, what is new, and which pages changed.")
                     .font(.system(size: 13))
                     .foregroundStyle(.secondary)
                     .lineSpacing(3)
