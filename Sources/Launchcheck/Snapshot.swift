@@ -12,7 +12,8 @@ enum Snapshot {
         defer { try? FileManager.default.removeItem(at: scratch) }
 
         let (before, after) = sample()
-        let shots: [(String, AuditModel.Tab?)] = [("overview", .overview), ("issues", .issues), ("pages", .pages), ("changes", .changes), ("welcome", nil)]
+        let shots: [(String, AuditModel.Tab?)] = [("overview", .overview), ("issues", .issues), ("pages", .pages), ("changes", .changes), ("welcome", nil),
+                                                  ("migrate", nil)]
 
         for dark in [false, true] {
             for (name, tab) in shots {
@@ -29,6 +30,15 @@ enum Snapshot {
                 model.trail = [58, 61, 60, 66, 69, 77]
                 model.checks = [after, before]
                 model.selectedPage = "https://www.acme-rockets.com/pricing"
+                if name.hasPrefix("migrate") {
+                    model.mode = .migrate
+                    if name == "migrate" {
+                        model.migration.old = "acme-rockets.com"
+                        model.migration.new = "acme-rockets.webflow.io"
+                        model.migration.present(move())
+                        model.migration.select("/our-people")
+                    }
+                }
 
                 let window = ContentView(model: model)
                     .frame(width: 1060, height: 720)
@@ -69,6 +79,52 @@ enum Snapshot {
         let ids = Set(failed.map(\.check))
         let notApplicable: Set<String> = ["hreflang.invalid", "hreflang.self", "hreflang.return", "hreflang.x-default"]
         return Check.all.map(\.id).filter { !ids.contains($0) && !notApplicable.contains($0) }
+    }
+
+    /// Acme Rockets, rebuilt: a WordPress site on its way to Webflow.
+    private static func move() -> MigrationMap {
+        typealias Row = MigrationRow
+        func row(_ path: String, _ outcome: Row.Outcome, _ destination: String? = nil, sure: Bool = true, note: String? = nil, title: String? = nil,
+                 alternatives: [String] = []) -> Row {
+            Row(old: "https://www.acme-rockets.com" + path, path: path, outcome: outcome, destination: destination, sure: sure, note: note,
+                title: title, alternatives: alternatives)
+        }
+        let products = ["rocket-skates", "giant-magnet", "anvil-classic", "anvil-pro", "jet-boots", "dehydrated-boulders", "earthquake-pills", "tornado-kit",
+                        "spring-shoes", "bird-seed", "tunnel-paint", "catapult"]
+        let posts = ["why-anvils-fall", "canyon-shipping", "a-year-of-rockets", "meet-the-test-pilots", "desert-warehouse", "magnets-and-you", "safety-first"]
+        let same = ["/", "/about", "/pricing", "/contact", "/blog", "/products", "/legal/privacy"]
+
+        var rows: [Row] = [
+            row("/clearance", .unmatched, note: "Nothing on the new site has a similar address or title", title: "Clearance: last year's rockets"),
+            row("/dealers/arizona", .unmatched, note: "Nothing on the new site has a similar address or title", title: "Find a dealer in Arizona"),
+            row("/our-people", .possible, "/team", sure: false, note: "Similar title, 81% alike", title: "The people behind Acme Rockets",
+                alternatives: ["/careers/test-pilot", "/about"]),
+            row("/blog/2023/11/skates-recalled", .possible, "/posts/skates-recall", sure: false, note: "Similar address, 79% alike", title: "Rocket skates recalled",
+                alternatives: ["/products/rocket-skates"]),
+            row("/shop/anvil", .possible, "/products/anvil-classic", sure: false, note: "2 new pages fit this address", title: "Anvils",
+                alternatives: ["/products/anvil-pro"]),
+            row("/jobs.php", .confident, "/careers", note: "Same page under /careers", title: "Jobs at Acme"),
+            row("/Contact-Us.html", .confident, "/contact", note: "Same address once tidied", title: "Contact us"),
+            row("/catalogue", .broken, "/products", note: "Gets there in 2 hops: /catalogue → /shop → /products. Point it straight at the last one.", title: "Catalogue"),
+        ]
+        rows += posts.enumerated().map { index, name in
+            row("/blog/202\(index % 3 + 1)/\(String(format: "%02d", index + 3))/\(name)", .confident, "/posts/\(name)", note: "Same page under /posts",
+                title: name.replacingOccurrences(of: "-", with: " ").capitalized)
+        }
+        rows += products.prefix(6).map { row("/shop/\($0)", .confident, "/products/\($0)", note: "Same page under /products", title: $0.replacingOccurrences(of: "-", with: " ").capitalized) }
+        rows += [row("/faq", .redirected, "/help", note: "Already redirects to /help"), row("/press", .redirected, "/about", note: "Already redirects to /about")]
+        rows += same.map { row($0, .same, $0) }
+        rows += products.suffix(6).map { row("/products/\($0)", .same, "/products/\($0)") }
+
+        var pages: [MigrationMap.NewPage] = same.map { .init(path: $0, title: $0 == "/" ? "Acme Rockets" : nil) }
+        pages += [.init(path: "/team", title: "The team behind Acme Rockets"), .init(path: "/careers", title: "Careers at Acme Rockets"),
+                  .init(path: "/careers/test-pilot", title: "Careers: test pilot"), .init(path: "/help", title: "Help"),
+                  .init(path: "/posts/skates-recall", title: "Why we recalled the rocket skates"), .init(path: "/changelog", title: "Changelog"),
+                  .init(path: "/posts/the-new-crate", title: "The new crate"), .init(path: "/compare", title: "Compare plans")]
+        pages += products.map { .init(path: "/products/\($0)", title: $0.replacingOccurrences(of: "-", with: " ").capitalized) }
+        pages += posts.map { .init(path: "/posts/\($0)", title: $0.replacingOccurrences(of: "-", with: " ").capitalized) }
+        pages[1].title = "About Acme Rockets"
+        return MigrationMap(oldSite: root + "/", newSite: "https://acme-rockets.webflow.io/", date: Date().addingTimeInterval(-40), rows: rows, newPages: pages)
     }
 
     /// Other sites for the sidebar, each with a believable score.
@@ -155,7 +211,7 @@ enum Snapshot {
             Finding("title.length", url: at("/products/glue-v2"), detail: "7 characters: “Glue V2”"),
         ]
         let after = Report(site: root + "/", date: Date().addingTimeInterval(-40), pagesChecked: 48, pagesFound: 48, linksChecked: 312, seconds: 9.4,
-                           findings: now, passed: passed(except: now), pages: pages)
+                           findings: now, passed: passed(except: now), pages: pages, builtWith: "Webflow")
 
         // A week earlier: a few things worse, a few not yet broken.
         var earlierPages = pages

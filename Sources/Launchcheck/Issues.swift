@@ -232,6 +232,12 @@ struct IssueInspector: View {
                     }
                 }
 
+                if let fix = check.fix {
+                    advice("How to fix", fix)
+                    // Where the change is made in Webflow, for sites that were built with it.
+                    if report.isWebflow, let place = check.webflow { advice("In Webflow", place) }
+                }
+
                 VStack(alignment: .leading, spacing: 4) {
                     SectionLabel(text: "Found", count: group.findings.count)
                     VStack(spacing: 0) {
@@ -268,6 +274,19 @@ struct IssueInspector: View {
             .padding(.horizontal, 22)
             .padding(.vertical, 22)
             .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+extension IssueInspector {
+    fileprivate func advice(_ title: String, _ text: String) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            SectionLabel(text: title)
+            Text(text)
+                .font(.system(size: 13))
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
+                .textSelection(.enabled)
         }
     }
 }

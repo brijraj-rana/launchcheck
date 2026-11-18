@@ -61,6 +61,8 @@ public enum ReportFormat {
                 lines.append("")
                 lines.append(group.check.why)
                 lines.append("")
+                let fix = fixLines(for: group.check, webflow: report.isWebflow)
+                if !fix.isEmpty { lines += fix + [""] }
                 for finding in group.findings.prefix(50) { lines.append("- \(line(finding, site: report.site))") }
                 if group.findings.count > 50 { lines.append("- and \(group.findings.count - 50) more") }
             }
@@ -81,6 +83,14 @@ public enum ReportFormat {
         encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         return (try? encoder.encode(report)).map { String(decoding: $0, as: UTF8.self) } ?? "{}"
+    }
+
+    /// How to fix a check, as lines for a ticket. The Webflow line is only for sites built with Webflow.
+    public static func fixLines(for check: Check, webflow: Bool) -> [String] {
+        var lines: [String] = []
+        if let fix = check.fix { lines.append("How to fix: \(fix)") }
+        if webflow, let place = check.webflow { lines.append("In Webflow: \(place)") }
+        return lines
     }
 
     public static func summary(_ report: Report) -> String {

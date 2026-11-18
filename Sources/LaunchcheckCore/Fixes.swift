@@ -1,0 +1,154 @@
+import Foundation
+
+/// How each check is fixed. `fix` is general advice in a sentence or two. `webflow` names the exact place in
+/// Webflow where the change is made, and is only written where Webflow has such a place and it is known for
+/// certain; a check with nothing Webflow-specific to say leaves it nil rather than guess.
+enum Fixes {
+    struct Guidance {
+        let fix: String
+        let webflow: String?
+
+        init(_ fix: String, webflow: String? = nil) {
+            self.fix = fix
+            self.webflow = webflow
+        }
+    }
+
+    // Places in Webflow that several checks share.
+    private static let robotsField = "Site settings → SEO → robots.txt"
+    private static let sitemapSetting = "Site settings → SEO → Sitemap"
+    private static let canonicalField = "Site settings → SEO → Global canonical tag URL"
+    private static let redirects = "Site settings → Publishing → 301 redirects"
+    private static let titleField = "Page settings → SEO settings → Title tag. For Collection pages, set it once on the template page and build it from a field."
+    private static let descriptionField = "Page settings → SEO settings → Meta description. For Collection pages, set it once on the template page and build it from a field."
+    private static let headCode = "Page settings → Custom code → Inside <head> tag, or Site settings → Custom code → Head code when it is on every page"
+    private static let headingTag = "Select the heading on the canvas and change its tag in the Settings panel."
+    private static let altText = "Select the image, open Image settings and fill in Alt text. Setting it on the file in the Assets panel covers every place the image is used."
+    private static let compress = "Assets panel → select the image → Compress, which converts it to WebP or AVIF. Resize very large originals before uploading."
+
+    static let table: [String: Guidance] = [
+        // Fix before launch
+        "robots.blocks-all": Guidance("Remove the “Disallow: /” line under “User-agent: *” in robots.txt and publish.",
+                                      webflow: "\(robotsField). Delete the “Disallow: /” line, save and publish."),
+        "robots.error": Guidance("Make /robots.txt answer with the file, or with a plain 404 if there is none. This is a server or hosting setting."),
+        "page.noindex": Guidance("Remove the noindex from the robots meta tag or the X-Robots-Tag header on every page that should be found.",
+                                 webflow: "Page settings → SEO settings → turn Sitemap indexing on. If the tag is still there, look for a robots meta tag in Page settings → Custom code."),
+        "sitemap.broken": Guidance("Remove the dead addresses from the sitemap, or restore the pages or redirect them.",
+                                   webflow: "\(sitemapSetting). With auto-generate on, publish again to rebuild it. A sitemap written by hand has to be edited by hand."),
+        "sitemap.offsite": Guidance("Generate the sitemap on the live domain so every address in it belongs to this site.",
+                                    webflow: "Site settings → Publishing → Production. Set the live domain as the default, then publish so the sitemap is rebuilt with it."),
+        "sitemap.too-big": Guidance("Split the sitemap into files of at most 50,000 addresses and list them in a sitemap index."),
+        "staging.leftovers": Guidance("Replace every staging address with the live one: canonicals, share images, og:url and links typed in by hand.",
+                                      webflow: "\(canonicalField): enter the live domain. For links, pick the page in the link settings instead of pasting a webflow.io address."),
+        "canonical.offsite": Guidance("Point each canonical at the page's own address on this domain.",
+                                      webflow: "\(canonicalField): enter the live domain, with https and without a trailing slash."),
+        "title.missing": Guidance("Give every page a title that says what the page is, in about 60 characters.", webflow: titleField),
+        "links.internal": Guidance("Correct each link, or redirect the missing address to the page that replaced it.",
+                                   webflow: "Fix the link where it is used. If the address used to exist, add it under \(redirects)."),
+        "images.broken": Guidance("Upload the missing files again, or correct the addresses the pages ask for."),
+        "social.image.broken": Guidance("Point og:image at an image that loads, using its full address.",
+                                        webflow: "Page settings → Open Graph settings → Open Graph image URL."),
+
+        // Should fix
+        "sitemap.missing": Guidance("Publish a sitemap at /sitemap.xml that lists every page meant to be found.",
+                                    webflow: "\(sitemapSetting). Turn on Auto-generate sitemap and publish."),
+        "sitemap.redirects": Guidance("List the address each redirect ends at, and drop the one that redirects."),
+        "sitemap.blocked": Guidance("Either take the pages out of the sitemap or remove the robots.txt rule that blocks them."),
+        "sitemap.noncanonical": Guidance("List only canonical addresses in the sitemap, or correct the canonical tags if they are the mistake."),
+        "page.orphan": Guidance("Link to each page from somewhere a visitor would look for it: the navigation, the footer or a related page."),
+        "content.js-shell": Guidance("Send the page's content in the HTML itself, by rendering it on the server or building it ahead of time."),
+        "head.duplicates": Guidance("Keep one title, one meta description and one canonical per page, and delete the extras.",
+                                    webflow: "Webflow writes these tags from the SEO settings. Delete the copy pasted into \(headCode)."),
+        "title.duplicate": Guidance("Write a title for each page that only that page could have.", webflow: titleField),
+        "description.missing": Guidance("Write a description of 50 to 160 characters for each page.", webflow: descriptionField),
+        "description.duplicate": Guidance("Write a description for each page that says what is on that page.", webflow: descriptionField),
+        "canonical.missing": Guidance("Add a canonical tag to every page, pointing at the page's own address.",
+                                      webflow: "\(canonicalField): enter the live domain. Webflow then adds a canonical to every page."),
+        "h1.missing": Guidance("Make the main heading of each page an H1.", webflow: headingTag + " Choose H1 for the main one."),
+        "charset.missing": Guidance("Add <meta charset=\"utf-8\"> as the first thing in the head."),
+        "page.nofollow": Guidance("Remove nofollow from the robots meta tag or the X-Robots-Tag header.",
+                                  webflow: "Look for a robots meta tag in \(headCode)."),
+        "meta.refresh": Guidance("Remove the meta refresh tag and redirect the address on the server with a 301.",
+                                 webflow: "Delete the tag from the page's custom code and add the address under \(redirects)."),
+        "redirect.chain": Guidance("Change the first redirect so it points straight at the final address.",
+                                   webflow: "\(redirects). Edit the rule for the first address so its target is the last one."),
+        "links.empty": Guidance("Give each link words, or an aria-label when it only holds an icon.",
+                                webflow: "Select the link, open the Settings panel and add a custom attribute named aria-label that says where it goes."),
+        "social.image.missing": Guidance("Add an og:image to every page: 1200 by 630 pixels works everywhere.",
+                                         webflow: "Page settings → Open Graph settings → Open Graph image URL."),
+        "images.alt": Guidance("Describe each image in a short phrase. Give purely decorative images an empty alt.", webflow: altText),
+        "images.heavy": Guidance("Resize each image to the size it is shown at and save it as WebP or AVIF.", webflow: compress),
+        "viewport.missing": Guidance("Add <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"> to the head."),
+        "links.external": Guidance("Link to where the page moved, or remove the link."),
+        "mixed.content": Guidance("Change each http:// address to https://, or host the file yourself if its server has no https."),
+        "placeholder.text": Guidance("Replace the placeholder with real words, or delete the element."),
+        "https.redirect": Guidance("Redirect every http:// address to its https:// twin with a 301. This is a hosting setting."),
+        "security.hsts": Guidance("Send a Strict-Transport-Security header with a max-age of at least a year. This is a server or hosting setting."),
+        "host.duplicate": Guidance("Pick www or non-www as the one address and redirect the other to it with a 301.",
+                                   webflow: "Site settings → Publishing → Production. Make one domain the default; Webflow redirects the others to it."),
+        "notfound.soft": Guidance("Make addresses that do not exist answer with a 404 status, not with a normal page."),
+        "page.too-large": Guidance("Move inline scripts, styles and data out of the HTML into separate files."),
+        "perf.uncompressed": Guidance("Turn on gzip or Brotli for HTML on the server or the CDN."),
+        "schema.invalid": Guidance("Correct the JSON: look for a missing comma, quote or bracket, then run it through a validator.",
+                                   webflow: "The script is usually in \(headCode)."),
+        "schema.incomplete": Guidance("Add the properties named in the findings to the markup.",
+                                      webflow: "The script is usually in \(headCode)."),
+        "schema.placeholder": Guidance("Replace each bracketed placeholder with the real value.",
+                                       webflow: "The script is usually in \(headCode)."),
+        "ai.search-blocked": Guidance("Remove the Disallow rules for these crawlers from robots.txt, or allow them by name.",
+                                      webflow: "\(robotsField). Remove the rules for these crawlers, save and publish."),
+        "ai.llms-invalid": Guidance("Start the file with a “# Title” line and list the pages that matter as Markdown links."),
+        "hreflang.invalid": Guidance("Use a two-letter language code, with a two-letter region after a hyphen when one is needed, as in en-GB."),
+        "hreflang.self": Guidance("Add a hreflang tag on each page that points at the page itself."),
+        "hreflang.return": Guidance("Add the missing tag on the other page, so each language version names all the others."),
+
+        // Worth a look
+        "robots.missing": Guidance("Publish a robots.txt that allows crawlers in and names the sitemap.",
+                                   webflow: "\(robotsField). Enter the rules, save and publish."),
+        "sitemap.undeclared": Guidance("Add a line to robots.txt: “Sitemap:” followed by the sitemap's full address.",
+                                       webflow: "\(robotsField). Add the Sitemap line, save and publish."),
+        "sitemap.lastmod": Guidance("Write the date each page really changed, or leave lastmod out."),
+        "sitemap.noindex": Guidance("Take the noindex off the pages that should be found, and take the rest out of the sitemap.",
+                                    webflow: "Page settings → SEO settings → Sitemap indexing decides both at once for a page."),
+        "sitemap.incomplete": Guidance("Add the pages to the sitemap, or regenerate it."),
+        "page.deep": Guidance("Link to the page from somewhere nearer the home page: a hub page, the navigation or the footer."),
+        "links.redirect": Guidance("Change each link to the address the redirect ends at."),
+        "redirect.temporary": Guidance("Change the redirect to a 301 if the move is permanent."),
+        "links.generic": Guidance("Reword each link so it says where it goes."),
+        "links.insecure": Guidance("Change each link to https:// where the other site has it."),
+        "url.hygiene": Guidance("Use short lowercase addresses with hyphens between words, and redirect the old address when one changes.",
+                                webflow: "Page settings → Slug. Then add the old address under \(redirects)."),
+        "title.length": Guidance("Aim for 10 to 60 characters, with the words that matter first.", webflow: titleField),
+        "description.length": Guidance("Aim for 50 to 160 characters.", webflow: descriptionField),
+        "canonical.mismatch": Guidance("If it is not deliberate, point the canonical at the page's own address."),
+        "h1.multiple": Guidance("Keep one H1 and make the others H2.", webflow: headingTag),
+        "heading.skip": Guidance("Step headings down one level at a time. Choose the tag for the outline and style it to look however it should.",
+                                 webflow: headingTag),
+        "content.thin": Guidance("Add what a visitor would come to this page to find out, or leave it if the page is meant to be short."),
+        "doctype.missing": Guidance("Start the file with <!doctype html>."),
+        "social.text.missing": Guidance("Add og:title and og:description to every page.",
+                                        webflow: "Page settings → Open Graph settings. Fill in the title and description, or tick the boxes that reuse the SEO ones."),
+        "social.twitter.missing": Guidance("Add <meta name=\"twitter:card\" content=\"summary_large_image\"> to the head.",
+                                           webflow: "Site settings → Custom code → Head code. Paste the tag there so every page has it."),
+        "social.url.mismatch": Guidance("Set og:url to the same address as the canonical."),
+        "images.large": Guidance("Resize each image to the size it is shown at and save it as WebP or AVIF.", webflow: compress),
+        "images.dimensions": Guidance("Add width and height attributes to each image, matching the file's proportions."),
+        "images.alt-quality": Guidance("Rewrite the alt text as a short phrase that says what the image shows.", webflow: altText),
+        "images.first-lazy": Guidance("Remove loading=\"lazy\" from the first image on the page.",
+                                      webflow: "Select the image, open Image settings and set Load to Eager."),
+        "perf.slow": Guidance("Look at caching and hosting first: a page served from a cache near the visitor answers in well under a second."),
+        "perf.blocking-scripts": Guidance("Add defer or async to the script tag, or move it to the end of the body.",
+                                          webflow: "Site settings → Custom code. Add defer to the tag in Head code, or move it to Footer code."),
+        "security.headers": Guidance("Set the missing headers on the server or the CDN."),
+        "schema.missing": Guidance("Add a JSON-LD script describing the organisation to the home page, then the type that fits each kind of page.",
+                                   webflow: "Paste the script into \(headCode)."),
+        "schema.deprecated": Guidance("Remove the retired types, or leave them: they do no harm.",
+                                      webflow: "The script is usually in \(headCode)."),
+        "ai.llms-missing": Guidance("Optional. Publish a Markdown file at /llms.txt with a “# Title” line and links to the pages that matter."),
+        "hreflang.x-default": Guidance("Add a hreflang=\"x-default\" tag to each set, pointing at the version to show everyone else."),
+        "lang.missing": Guidance("Add a lang attribute to the <html> tag, such as lang=\"en\".",
+                                 webflow: "Site settings → General → Localization → Language code."),
+        "favicon.missing": Guidance("Add a favicon and link to it from the head.",
+                                    webflow: "Site settings → General → Icons → Favicon."),
+    ]
+}

@@ -48,6 +48,8 @@ struct LaunchcheckApp: App {
             ContentView(model: model)
                 .frame(minWidth: 900, idealWidth: 1060, minHeight: 580, idealHeight: 720)
                 .background(FirstSize(width: 1060, height: 720))
+                // launchcheck://open?site=example.com, from Launchwatch or anything else.
+                .onOpenURL { model.open(link: $0) }
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentMinSize)
@@ -57,10 +59,15 @@ struct LaunchcheckApp: App {
             CommandMenu("Report") {
                 Button("Check Again") { model.start() }
                     .keyboardShortcut("r")
-                    .disabled(model.isRunning || model.address.isEmpty)
+                    .disabled(model.isRunning || model.address.isEmpty || model.mode == .migrate)
+                Button(model.mode == .migrate ? "Check a Site" : "Move a Site") { model.mode = model.mode == .migrate ? .check : .migrate }
+                    .keyboardShortcut("m", modifiers: [.command, .shift])
                 Divider()
                 ForEach(Array(AuditModel.Tab.allCases.enumerated()), id: \.offset) { index, tab in
-                    Button(tab.rawValue) { model.tab = tab }
+                    Button(tab.rawValue) {
+                        model.mode = .check
+                        model.tab = tab
+                    }
                         .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")))
                         .disabled(model.report == nil || model.isRunning)
                 }

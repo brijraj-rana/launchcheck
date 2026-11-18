@@ -19,6 +19,14 @@ final class AuditModel: ObservableObject {
         case changes = "Changes"
     }
 
+    /// What the window is for at the moment: checking one site, or moving one to a new build.
+    enum Mode: Hashable {
+        case check, migrate
+    }
+
+    @Published var mode: Mode = .check
+    let migration = MigrationModel()
+
     @Published var address = ""
     @Published var phase: Phase = .idle
     @Published var progress = AuditProgress(phase: "Starting")
@@ -100,6 +108,7 @@ final class AuditModel: ObservableObject {
         checkExternalLinks = defaults.object(forKey: "checkExternalLinks") as? Bool ?? true
         checkImages = defaults.object(forKey: "checkImages") as? Bool ?? true
         if loadSites { sites = history.sites() }
+        migration.pageLimit = { [weak self] in self?.maxPages ?? 200 }
     }
 
     var isRunning: Bool { phase == .running }
@@ -109,6 +118,7 @@ final class AuditModel: ObservableObject {
     func start() {
         let site = address.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !site.isEmpty else { return }
+        mode = .check
         task?.cancel()
         run += 1
         let current = run
@@ -169,6 +179,7 @@ final class AuditModel: ObservableObject {
     /// Opens an earlier report from the sidebar, compared with the one before it.
     func show(_ report: Report) {
         guard !isRunning else { return }
+        mode = .check
         let earlier = history.reports(for: report.host).first { $0.date < report.date }
         address = report.host
         present(report, comparedWith: earlier)
@@ -192,6 +203,19 @@ final class AuditModel: ObservableObject {
         selectedIssue = report.groups.first?.id
         selectedPage = sortedPages(of: report).first?.url
         phase = .done
+    }
+
+    /// Answers launchcheck://open?site=example.com: the latest kept report for that site, or a fresh check of it.
+    func open(link: URL) {
+        guard let site = DeepLink.site(from: link) else { return }
+        NSApp.activate(ignoringOtherApps: true)
+        if let kept = history.latest(matching: site) {
+            if isRunning { stop() }
+            show(kept)
+        } else {
+            address = site
+            start()
+        }
     }
 
     // MARK: Deleting
@@ -366,6 +390,8 @@ final class AuditModel: ObservableObject {
     func copyTask(_ group: Report.Group) {
         guard let report else { return }
         var lines = ["## \(group.check.title)", "", group.check.why, "", "Done when: \(group.check.passed.prefix(1).lowercased() + group.check.passed.dropFirst())."]
+        let fix = ReportFormat.fixLines(for: group.check, webflow: report.isWebflow)
+        if !fix.isEmpty { lines += [""] + fix }
         if !group.findings.isEmpty { lines.append("") }
         for finding in group.findings {
             let place = finding.url.map { ReportFormat.short($0, site: report.site) } ?? report.host

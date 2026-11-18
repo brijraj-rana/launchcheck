@@ -83,6 +83,10 @@ public struct Check: Equatable, Sendable {
     public let title: String
     public let passed: String
     public let why: String
+    /// How to fix it, in a sentence or two. The words live in Fixes.swift, keyed by `id`.
+    public let fix: String?
+    /// Where the fix is made on a site built with Webflow, when Webflow has a specific place for it.
+    public let webflow: String?
 
     /// Every check, most serious first, in the order a report lists them.
     public static let all: [Check] = errors + warnings + notices
@@ -273,6 +277,9 @@ public struct Check: Equatable, Sendable {
         self.title = title
         self.passed = passed
         self.why = why
+        let guidance = Fixes.table[id]
+        fix = guidance?.fix
+        webflow = guidance?.webflow
     }
 }
 
@@ -380,9 +387,11 @@ public struct Report: Codable, Equatable, Sendable {
     /// IDs of checks that ran and found nothing.
     public var passed: [String]
     public var pages: [PageSummary]
+    /// What the site was built with, when it says so ("Webflow"). Absent from reports kept before this was recorded.
+    public var builtWith: String?
 
     public init(site: String, date: Date = Date(), pagesChecked: Int, pagesFound: Int, linksChecked: Int, seconds: Double,
-                findings: [Finding], passed: [String], pages: [PageSummary] = []) {
+                findings: [Finding], passed: [String], pages: [PageSummary] = [], builtWith: String? = nil) {
         self.site = site
         self.date = date
         self.pagesChecked = pagesChecked
@@ -392,7 +401,11 @@ public struct Report: Codable, Equatable, Sendable {
         self.findings = findings
         self.passed = passed
         self.pages = pages
+        self.builtWith = builtWith
     }
+
+    /// True when the pages carry Webflow's marks, so fixes can name the place in Webflow where they are made.
+    public var isWebflow: Bool { builtWith == "Webflow" }
 
     public struct Group: Identifiable, Sendable {
         public let check: Check

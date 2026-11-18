@@ -410,7 +410,16 @@ struct Stepper: View {
     @ObservedObject var model: AuditModel
 
     var body: some View {
-        if let position = model.position {
+        StepControl(position: model.position) { model.move(by: $0) }
+    }
+}
+
+struct StepControl: View {
+    let position: (index: Int, count: Int)?
+    let move: (Int) -> Void
+
+    var body: some View {
+        if let position {
             HStack(spacing: 2) {
                 Text("\(position.index) of \(position.count)")
                     .font(.system(size: 11).monospacedDigit())
@@ -424,7 +433,7 @@ struct Stepper: View {
     }
 
     private func step(_ symbol: String, _ label: String, by amount: Int, enabled: Bool) -> some View {
-        Button { model.move(by: amount) } label: {
+        Button { move(amount) } label: {
             Image(systemName: symbol)
                 .font(.system(size: 9, weight: .bold))
                 .foregroundStyle(.secondary)

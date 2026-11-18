@@ -13,13 +13,19 @@ struct ContentView: View {
             Sidebar(model: model)
                 .frame(width: 216)
             Tone.hairline.frame(width: 1)
-            VStack(spacing: 0) {
-                AddressBar(model: model)
-                    .padding(.leading, 20)
-                    .padding(.trailing, 16)
-                    .frame(height: 52)
-                    .overlay(alignment: .bottom) { RunLine(model: model) }
-                main
+            Group {
+                if model.mode == .migrate {
+                    MigrateScreen(model: model.migration)
+                } else {
+                    VStack(spacing: 0) {
+                        AddressBar(model: model)
+                            .padding(.leading, 20)
+                            .padding(.trailing, 16)
+                            .frame(height: 52)
+                            .overlay(alignment: .bottom) { RunLine(running: model.isRunning, progress: model.progress) }
+                        main
+                    }
+                }
             }
             .background(Tone.surface)
         }
@@ -44,7 +50,9 @@ struct ContentView: View {
     @ViewBuilder private var main: some View {
         switch model.phase {
         case .running:
-            RunningView(model: model)
+            RunningView(title: "Reading \(Auditor.siteURL(from: model.address)?.host ?? model.address)",
+                        subtitle: "The way a search engine does: every page, every link, nothing run.",
+                        steps: model.finishedSteps, progress: model.progress)
         case .failed(let message):
             FailedView(message: message) { model.start() }
         case .idle, .done:
@@ -58,6 +66,7 @@ struct ContentView: View {
 }
 
 /// Up and down move through the list on screen, unless a text field is being typed in.
+/// On the redirect list, Return opens the destination of the picked row for editing.
 @MainActor
 enum ArrowKeys {
     private static var installed = false
@@ -67,8 +76,19 @@ enum ArrowKeys {
         installed = true
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak model] event in
             guard let model, event.modifierFlags.intersection([.command, .option, .control]).isEmpty,
-                  !(event.window?.firstResponder is NSText), model.report != nil, !model.isRunning,
-                  model.tab == .issues || model.tab == .pages else { return event }
+                  !(event.window?.firstResponder is NSText) else { return event }
+            if model.mode == .migrate {
+                let migration = model.migration
+                guard migration.map != nil, !migration.isRunning else { return event }
+                switch event.keyCode {
+                case 125: migration.move(by: 1)
+                case 126: migration.move(by: -1)
+                case 36, 76: migration.edit()
+                default: return event
+                }
+                return nil
+            }
+            guard model.report != nil, !model.isRunning, model.tab == .issues || model.tab == .pages else { return event }
             switch event.keyCode {
             case 125: model.move(by: 1)
             case 126: model.move(by: -1)
@@ -81,21 +101,21 @@ enum ArrowKeys {
 
 /// The hairline under the address bar, which fills as a check runs.
 struct RunLine: View {
-    @ObservedObject var model: AuditModel
+    let running: Bool
+    let progress: AuditProgress
 
     var body: some View {
         GeometryReader { geometry in
-            let progress = model.progress
             let fraction = progress.total > 0 ? min(1, CGFloat(progress.done) / CGFloat(progress.total)) : 0.03
             ZStack(alignment: .leading) {
                 Tone.hairline
-                if model.isRunning {
+                if running {
                     Tone.ink.frame(width: max(8, geometry.size.width * fraction))
                         .animation(Motion.smoothOut(Motion.fast), value: progress.done)
                 }
             }
         }
-        .frame(height: model.isRunning ? 2 : 1)
+        .frame(height: running ? 2 : 1)
         .accessibilityHidden(true)
     }
 }
@@ -141,7 +161,7 @@ struct Sidebar: View {
                 Scroller {
                     VStack(spacing: 1) {
                         ForEach(model.sites, id: \.host) { site in
-                            SiteRow(site: site, selected: model.report?.host == site.host && !model.isRunning) {
+                            SiteRow(site: site, selected: model.mode == .check && model.report?.host == site.host && !model.isRunning) {
                                 model.show(site)
                             } delete: {
                                 model.removal = .site(site.host)
@@ -163,6 +183,10 @@ struct Sidebar: View {
                 }
             }
             Spacer(minLength: 0)
+            // The two things the window does. Checking is where it opens; moving a site is the other.
+            Segments(options: [(AuditModel.Mode.check, "Check a site"), (.migrate, "Move a site")], selection: $model.mode)
+                .padding(.horizontal, 12)
+                .padding(.bottom, 12)
         }
         .frame(maxHeight: .infinity, alignment: .top)
     }
@@ -369,23 +393,26 @@ struct IdleView: View {
 }
 
 struct RunningView: View {
-    @ObservedObject var model: AuditModel
+    let title: String
+    let subtitle: String
+    /// Steps that have finished, in order.
+    let steps: [String]
+    let progress: AuditProgress
 
     var body: some View {
-        let progress = model.progress
         VStack(alignment: .leading, spacing: 26) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Reading \(Auditor.siteURL(from: model.address)?.host ?? model.address)")
+                Text(title)
                     .font(.system(size: 26, weight: .semibold))
                     .tracking(-0.3)
                     .lineLimit(1)
                     .truncationMode(.middle)
-                Text("The way a search engine does: every page, every link, nothing run.")
+                Text(subtitle)
                     .font(.system(size: 13))
                     .foregroundStyle(.secondary)
             }
             VStack(alignment: .leading, spacing: 0) {
-                ForEach(Array(model.finishedSteps.enumerated()), id: \.offset) { _, step in
+                ForEach(Array(steps.enumerated()), id: \.offset) { _, step in
                     HStack(spacing: 10) {
                         Mark(.passed)
                         Text(step).font(.system(size: 13).monospacedDigit()).foregroundStyle(.secondary)
@@ -404,7 +431,7 @@ struct RunningView: View {
                 }
                 .frame(height: 28)
             }
-            .animation(Motion.reduced ? nil : Motion.move, value: model.finishedSteps.count)
+            .animation(Motion.reduced ? nil : Motion.move, value: steps.count)
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 28)
@@ -415,13 +442,15 @@ struct RunningView: View {
 }
 
 struct FailedView: View {
+    var title = "That site could not be checked"
     let message: String
+    var hint = "Check the spelling, or try the address in a browser first."
     let retry: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("That site could not be checked")
+                Text(title)
                     .font(.system(size: 26, weight: .semibold))
                     .tracking(-0.3)
                 Text(message)
@@ -431,7 +460,7 @@ struct FailedView: View {
                     .textSelection(.enabled)
                     .frame(maxWidth: 500, alignment: .leading)
             }
-            Text("Check the spelling, or try the address in a browser first.")
+            Text(hint)
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
             Button("Try again", action: retry).buttonStyle(QuietButton())

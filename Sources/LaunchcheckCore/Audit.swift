@@ -2,8 +2,8 @@ import Foundation
 
 /// Crawls a site and runs every check against it.
 public final class Auditor: @unchecked Sendable {
-    private let fetcher: Fetcher
-    private let options: Options
+    let fetcher: Fetcher
+    let options: Options
 
     public init(fetcher: Fetcher = URLSessionFetcher(), options: Options = Options()) {
         self.fetcher = fetcher
@@ -686,18 +686,19 @@ public final class Auditor: @unchecked Sendable {
                       seconds: Date().timeIntervalSince(started),
                       findings: sorted,
                       passed: Check.all.map(\.id).filter { !failed.contains($0) && !skipped.contains($0) },
-                      pages: summaries)
+                      pages: summaries,
+                      builtWith: loaded.contains { $0.facts?.isWebflow == true } || homePage.facts?.isWebflow == true ? "Webflow" : nil)
     }
 
     // MARK: Pieces
 
-    private func load(_ url: URL, inSitemap: Bool) async -> Page {
+    func load(_ url: URL, inSitemap: Bool) async -> Page {
         let result = await fetcher.fetch(url, bodyWanted: true)
         let facts = result.ok && result.isHTML ? HTMLScanner.scan(result.body) : nil
         return Page(url: url, result: result, facts: facts, inSitemap: inSitemap)
     }
 
-    private func internalLinks(of page: Page, host: String) -> [URL] {
+    func internalLinks(of page: Page, host: String) -> [URL] {
         guard let facts = page.facts else { return [] }
         let base = facts.base.flatMap { URL(string: $0, relativeTo: page.result.finalURL)?.absoluteURL } ?? page.result.finalURL
         return facts.links.compactMap { href in

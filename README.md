@@ -33,7 +33,9 @@ Most launch mistakes are not hard to fix. They are hard to notice: a noindex car
 
 - **One line, then a score.** The verdict says whether the site can launch. The score says how far it is from tidy, broken down into ten areas.
 - **The whole site at a glance.** One square per page, colored by the worst thing found on it. Click one to open that page.
-- **Sorted by what matters.** Fix before launch, should fix, worth a look. Every check says why it matters, when it counts as done, and where it was found, and copies out as a checklist for a ticket.
+- **Sorted by what matters.** Fix before launch, should fix, worth a look. Every check says why it matters, when it counts as done, how to fix it and where it was found, and copies out as a checklist for a ticket.
+- **Says where in Webflow.** On a site built with Webflow, a fix names the setting it is made in: “Page settings → SEO settings → turn Sitemap indexing on”.
+- **Moving a site.** Give it the old site and the new one, and it writes the redirects that keep the old pages' ranking.
 - **Staging leftovers.** Noindex tags and headers, canonicals, share images and links that still point at a staging domain, and sitemaps generated on one.
 - **Every link and image.** Broken links, broken and overweight images, redirect chains, temporary redirects, pages nothing links to, pages buried more than three clicks deep.
 - **The head of every page.** Titles, descriptions, canonicals, headings, share tags, alt text, repeated tags.
@@ -72,6 +74,30 @@ Each check of a site is kept. The next one is compared with it: what was fixed, 
   </picture>
 </p>
 
+### Moving a site
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/migrate-dark.png">
+    <img src="docs/migrate.png" width="900" alt="Moving a site: 21 old pages need a redirect, with each old address beside the page it should go to, and on the right the closest match for the selected one and two other candidates">
+  </picture>
+</p>
+
+When a site is rebuilt, say from WordPress to Webflow, every old address that is not redirected loses its place in search. Switch to “Move a site” at the foot of the sidebar, type the old address and the new one, and each old page gets one of six answers:
+
+- **Same address.** The new site has a page there. Nothing to do.
+- **Already redirects.** To a page that loads. Nothing to do, and it says where.
+- **Redirects badly.** Through a chain, or to a page that is not there.
+- **A confident match.** The address is gone, but the page it became is plain: `/pricing.html` and `/pricing`, `/blog/2021/03/why-anvils-fall` and `/posts/why-anvils-fall`. The redirect is written.
+- **A possible match.** The closest page by address or by title. It is marked, and it is yours to check.
+- **No match.** Nothing on the new site looks like it. This one needs a person.
+
+Pick a row to see why it was decided that way and the other pages it could be. Type a different path, pick a page from the menu, or press “Looks right”. Then export: a CSV for Webflow's 301 redirect import, a plain `old -> new` list, a `_redirects` file for Netlify or Cloudflare Pages, or JSON.
+
+Two cautions for Webflow. Importing a CSV replaces every redirect the site already has, so export the existing ones first and merge them if you want to keep them. And export once from Webflow to check that its column names match the first line of the file Launchcheck writes (`source,target`); the names were not checked against a live Webflow export.
+
+The new site can still be on its staging address, since redirects are written as paths. If the old site is already offline, load its sitemap or paste a list of addresses with the button at the end of the first field. New pages that no old address leads to are listed too, for information.
+
 ## Install
 
 ### Download
@@ -98,6 +124,8 @@ cd launchcheck
 
 Type a site and press Return. Sites you have checked stay in the sidebar with their last score; click one to reopen its report without checking again. Point at a site and press the × to delete it, or use the menu beside “Sites” to delete them all. The Changes tab lists the checks kept for a site: open an older one, or delete any of them. The slider icon in the address bar sets how many pages to read (50, 200 or 1,000), whether links to other sites are followed, and whether images are weighed.
 
+The switch at the foot of the sidebar changes what the window does: check a site, or move one. In the redirect list, ↑ and ↓ move, Return puts the cursor in the destination of the picked row, Return again keeps what you typed and Esc leaves it as it was.
+
 In Issues, the counts above the list are filters: everything, each level, or what passed. In Pages, the sort button orders the list by most to fix, slowest, fewest words, most clicks from home or address, and each row shows the figure it is sorted by. Both inspectors say where you are in the list (“2 of 48”) and step either way.
 
 | Shortcut | Does |
@@ -106,7 +134,9 @@ In Issues, the counts above the list are filters: everything, each level, or wha
 | ↑ and ↓ | Move through the issues or the pages |
 | Esc | Stop |
 | ⌘R | Check again |
+| Return | In the redirect list, edit where the picked address goes |
 | ⌘1 to ⌘4 | Overview, Issues, Pages, Changes |
+| ⇧⌘M | Move a site, and back |
 | ⇧⌘C | Copy the report as Markdown |
 | ⌘S | Save the report as Markdown |
 
@@ -139,6 +169,33 @@ FIX BEFORE LAUNCH
     - /blog/launch-day  robots meta tag
 ```
 
+Moving a site works from the command line too. The redirects go to standard output and the summary to standard error, so the output can be saved as it is. It exits with 1 when an old page is left with nowhere to go.
+
+```bash
+launchcheck migrate oldsite.com newsite.webflow.io                              # old -> new, one per line
+launchcheck migrate oldsite.com newsite.webflow.io --format webflow > redirects.csv
+launchcheck migrate oldsite.com newsite.com --old-list old-sitemap.xml          # the old site is already offline
+launchcheck migrate oldsite.com newsite.com --format redirects --confident-only > _redirects
+launchcheck migrate oldsite.com newsite.com --format json --max-pages 1000
+```
+
+```
+/pricing.html -> /pricing
+/blog/2021/03/why-anvils-fall -> /posts/why-anvils-fall
+/our-people -> /team  (check)
+/clearance -> ?
+```
+
+### From another app
+
+Launchcheck answers to its own address:
+
+```bash
+open "launchcheck://open?site=example.com"
+```
+
+It comes forward with the latest kept report for that site, or checks the site if there is none.
+
 ## What it checks
 
 | Area | Fix before launch | Should fix | Worth a look |
@@ -162,6 +219,8 @@ Some judgement calls, so the report stays trustworthy:
 - **Links to other sites** are only called broken when the page is plainly gone (404, 410, or a domain that does not exist). Many sites turn robots away with a 403, and that is not your broken link.
 - **A link to a `webflow.io` address** only counts as a staging leftover on a site built with Webflow. Elsewhere it is more likely a deliberate link to someone's work.
 - **An empty `alt=""`** is correct for a decorative image and passes. Only a missing attribute is flagged.
+- **A redirect is only called ready when the match is plain.** The same address once tidied (case, a trailing slash, `.html`, `.php`, `/index`), the same page under another name for its section (`/blog/` and `/posts/`, with any dates dropped), or a last part at least 85% alike and clearly ahead of the next best. Titles and main headings have to be 90% alike. Anything looser, down to 60% for addresses and 65% for titles, is offered as a guess and marked.
+- **Webflow steps are only given where the place is certain.** A fix that has no setting of its own in Webflow, such as a response header, says how to fix it in general and stops there.
 - **Checks that do not apply are left out, not passed.** A site in one language has no International score at all.
 - **Response time is measured from your Mac**, once per page. It is a hint, not a lab result.
 
@@ -183,10 +242,10 @@ What it deliberately does not do: anything that needs a paid data source, a Goog
 
 ```
 Sources/
-  LaunchcheckCore/   UI-free engine: fetching, HTML scanning, robots.txt and sitemaps, the checks, scoring, comparison, report formats
+  LaunchcheckCore/   UI-free engine: fetching, HTML scanning, robots.txt and sitemaps, the checks and their fixes, scoring, comparison, the redirect matcher, report formats
   Launchcheck/       the SwiftUI app
   launchcheck-cli/   the command-line front end
-Tests/               the scanner, robots.txt, sitemaps, structured data, hreflang, scoring, comparison, and whole audits of pretend sites
+Tests/               the scanner, robots.txt, sitemaps, structured data, hreflang, scoring, comparison, the redirect matcher and its formats, and whole audits of pretend sites
 scripts/             build-app.sh bundles the app and the DMG; make-icon.swift draws the icon in code; build-site.sh rebuilds the web page
 site/                the one-page website, static HTML with the check catalogue written into it
 ```
@@ -210,7 +269,7 @@ swift build && swift test       # or open Package.swift in Xcode
 ./scripts/build-app.sh --dmg    # universal build, packaged as build/Launchcheck-<version>.dmg
 .build/debug/Launchcheck --snapshot docs   # re-render the README screenshots with a sample report
 ./scripts/build-site.sh         # rebuild site/index.html from its template and the current list of checks
-launchcheck --checks            # every check as JSON
+launchcheck --checks            # every check as JSON, with how to fix it
 ```
 
 ## License
